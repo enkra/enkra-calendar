@@ -100,9 +100,33 @@ Widget eventDetailPage(
                 IconButton(
                   onPressed: () {
                     if (event.uid != null) {
-                      calendarManager.removeEvent(event.uid!);
+                      showDialog<String>(
+                        context: context,
+                        builder: (BuildContext context) => AlertDialog(
+                          title: const Text('Confirm'),
+                          content:
+                              const Text("Are you sure to delete this event?"),
+                          actions: <Widget>[
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, 'Cancel'),
+                              child: const Text('No'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                // pop dialog
+                                Navigator.pop(context);
+
+                                // pop to main page
+                                Navigator.pop(context);
+
+                                calendarManager.removeEvent(event.uid!);
+                              },
+                              child: const Text('Yes'),
+                            ),
+                          ],
+                        ),
+                      );
                     }
-                    Navigator.pop(context);
                   },
                   icon: Icon(
                     Icons.delete_outlined,
