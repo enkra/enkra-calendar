@@ -1,4 +1,4 @@
-# calendar_demo
+# Enkra Calendar
 
 A new Flutter project.
 

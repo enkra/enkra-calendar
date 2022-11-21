@@ -1,4 +1,4 @@
-package com.example.calendar_demo
+package io.enkra.calendar
 
 import io.flutter.embedding.android.FlutterActivity
 

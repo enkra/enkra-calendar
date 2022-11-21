@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.calendar_demo">
+    package="io.enkra.calendar">
    <application
         android:label="Enkra Calendar"
         android:name="${applicationName}"

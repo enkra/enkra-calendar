@@ -33,7 +33,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Calandar Demo',
+      title: 'Enkra Calandar',
       theme: ThemeData.from(
         colorScheme: const ColorScheme.light().copyWith(
           primary: theme.primary,
