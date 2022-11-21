@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:ical/src/event.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -15,7 +14,7 @@ part 'editing.g.dart';
 Widget editingPage(
   BuildContext context, {
   required Date initialDay,
-  IEvent? eventToEdit,
+  CalendarEvent? eventToEdit,
 }) {
   final now = DateTime.now();
 
@@ -23,11 +22,18 @@ Widget editingPage(
       DateTime(initialDay.year, initialDay.month, initialDay.day, now.hour + 1);
   final initialEnd = initialStart.add(const Duration(hours: 1));
 
-  final event = useRef(eventToEdit ??
-      IEvent(
-        status: IEventStatus.CONFIRMED,
-        start: initialStart,
+  final event = useState(eventToEdit?.copy() ??
+      CalendarEvent(
+        start: initialStart.toUtc(),
+        end: initialEnd.toUtc(),
       ));
+
+  final start = useState(event.value.localStart());
+  final end = useState(event.value.localEnd() ?? initialEnd);
+
+  final isAllDay = useState(eventToEdit?.isAllDay ?? false);
+
+  final theme = Theme.of(context);
 
   return Scaffold(
     appBar: AppBar(
@@ -40,6 +46,12 @@ Widget editingPage(
               onPressed: () {
                 final calendarManager =
                     Provider.of<CalendarManager>(context, listen: false);
+
+                if (isAllDay.value) {
+                  event.value.setTimeAsAllDay(start.value, end.value);
+                } else {
+                  event.value.setTime(start.value, end.value);
+                }
 
                 if (event.value.uid == null) {
                   calendarManager.createEvent(
@@ -100,23 +112,31 @@ Widget editingPage(
           ),
           title: const Text("All day"),
           trailing: Switch(
-            value: false,
-            onChanged: (_) {},
-          ),
-        ),
-        ListTile(
-          leading: const SizedBox(),
-          title: _TimePicker(
-            initialTime: event.value.start.toLocal(),
-            onTimePicked: (time) {
-              event.value.start = time.toUtc();
+            activeColor: theme.primaryColor,
+            value: isAllDay.value,
+            onChanged: (_isAllDay) {
+              isAllDay.value = _isAllDay;
             },
           ),
         ),
         ListTile(
           leading: const SizedBox(),
           title: _TimePicker(
-            initialTime: initialEnd,
+            initialTime: start.value,
+            isShowTime: !isAllDay.value,
+            onTimePicked: (time) {
+              start.value = time;
+            },
+          ),
+        ),
+        ListTile(
+          leading: const SizedBox(),
+          title: _TimePicker(
+            initialTime: event.value.localEnd() ?? event.value.localStart(),
+            isShowTime: !isAllDay.value,
+            onTimePicked: (time) {
+              end.value = time;
+            },
           ),
         ),
         const Divider(),
@@ -155,6 +175,7 @@ Widget _timePicker(
   BuildContext context, {
   required DateTime initialTime,
   void Function(DateTime)? onTimePicked,
+  bool isShowTime = true,
 }) {
   final time = useState(initialTime);
 
@@ -162,33 +183,35 @@ Widget _timePicker(
 
   final dateString = DateFormat("E, MMM d, y").format(time.value);
 
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      InkWell(
-        child: Text(dateString),
-        onTap: () async {
-          final date = await showDatePicker(
-              context: context,
-              initialDate: time.value,
-              firstDate: DateTime(2015, 8),
-              lastDate: DateTime(2101));
+  var widgets = [
+    InkWell(
+      child: Text(dateString),
+      onTap: () async {
+        final date = await showDatePicker(
+            context: context,
+            initialDate: time.value,
+            firstDate: DateTime(2015, 8),
+            lastDate: DateTime(2101));
 
-          if (date == null) {
-            return;
-          }
+        if (date == null) {
+          return;
+        }
 
-          time.value = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            time.value.hour,
-            time.value.minute,
-          );
+        time.value = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          time.value.hour,
+          time.value.minute,
+        );
 
-          onTimePicked?.call(time.value);
-        },
-      ),
+        onTimePicked?.call(time.value);
+      },
+    ),
+  ];
+
+  if (isShowTime) {
+    widgets.add(
       InkWell(
         child: Text(timeOfDay.format(context)),
         onTap: () async {
@@ -212,6 +235,11 @@ Widget _timePicker(
           onTimePicked?.call(time.value);
         },
       ),
-    ],
+    );
+  }
+
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: widgets,
   );
 }

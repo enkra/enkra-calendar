@@ -125,7 +125,7 @@ Widget _calendarPanel(
   final focusedDay = useRef(initialDay.utcTime());
   final selectedDay = useState(initialDay.utcTime());
 
-  return TableCalendar<IEvent>(
+  return TableCalendar<CalendarEvent>(
     firstDay: firstDay.utcTime(),
     lastDay: lastDay.utcTime(),
     focusedDay: focusedDay.value,
@@ -421,8 +421,8 @@ Widget _dateInfo(
 }
 
 @swidget
-Widget _eventBox(BuildContext context, IEvent event) {
-  final time = TimeOfDay.fromDateTime(event.start.toLocal()).format(context);
+Widget _eventBox(BuildContext context, CalendarEvent event) {
+  final time = TimeOfDay.fromDateTime(event.localStart()).format(context);
 
   return Material(
     type: MaterialType.card,

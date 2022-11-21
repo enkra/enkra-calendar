@@ -133,8 +133,7 @@ Widget _textTask(BuildContext context, {required InboxNote note}) {
                         MaterialPageRoute(
                             builder: (context) => EditingPage(
                                   initialDay: Date.fromTime(DateTime.now()),
-                                  eventToEdit: IEvent(
-                                    status: IEventStatus.CONFIRMED,
+                                  eventToEdit: CalendarEvent(
                                     start: DateTime.now(),
                                     summary: content,
                                     description: note.content,

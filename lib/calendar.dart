@@ -4,12 +4,14 @@ import "package:collection/collection.dart";
 import 'package:flutter/foundation.dart';
 
 import 'package:ical/src/event.dart';
+import 'package:ical/src/abstract.dart';
+import 'package:ical/src/subcomponents.dart';
 import 'package:nanoid/nanoid.dart';
 
 import 'date.dart';
 
 class DateEvent {
-  final List<IEvent> events;
+  final List<CalendarEvent> events;
 
   final List<String> holidays;
   final List<String> birthdays;
@@ -24,9 +26,9 @@ class DateEvent {
 }
 
 abstract class IEvents {
-  Future<List<IEvent>> fetchEvent(Date start, Date end);
+  Future<List<CalendarEvent>> fetchEvent(Date start, Date end);
 
-  Future<void> add(IEvent event);
+  Future<void> add(CalendarEvent event);
 
   Future<void> remove(String uid);
 }
@@ -67,7 +69,7 @@ class CalendarManager extends ChangeNotifier {
         _inboxNotes = inboxNotes,
         super();
 
-  createEvent(IEvent event) {
+  createEvent(CalendarEvent event) {
     event.uid = nanoid(32);
 
     _events.add(event);
@@ -75,7 +77,7 @@ class CalendarManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  updateEvent(IEvent event) {
+  updateEvent(CalendarEvent event) {
     _events.add(event);
 
     notifyListeners();
@@ -88,13 +90,15 @@ class CalendarManager extends ChangeNotifier {
   }
 
   Future<Map<Date, DateEvent>> getByDateRange(Date start, Date end) async {
-    final events = (await _events.fetchEvent(start, end)).map((IEvent e) {
+    final events =
+        (await _events.fetchEvent(start, end)).map((CalendarEvent e) {
       e.start = e.start.toLocal();
       return e;
     }).toList();
 
-    final eventMap = groupBy(events, (IEvent e) => Date.fromTime(e.start))
-        .map((day, events) {
+    final eventMap =
+        groupBy(events, (CalendarEvent e) => Date.fromTime(e.start))
+            .map((day, events) {
       final sortedEvents = events.sortedBy((e) => e.start).toList();
       return MapEntry(day, DateEvent(events: sortedEvents));
     });
@@ -132,5 +136,81 @@ class CalendarManager extends ChangeNotifier {
     _inboxNotes.remove(noteId);
 
     notifyListeners();
+  }
+}
+
+class CalendarEvent {
+  String? uid;
+  String? summary;
+  String? description;
+  DateTime start;
+  DateTime? end;
+
+  bool isAllDay;
+
+  CalendarEvent({
+    this.uid,
+    this.summary,
+    this.description,
+    required this.start,
+    this.end,
+    this.isAllDay = false,
+  });
+
+  CalendarEvent copy() {
+    return CalendarEvent(
+      uid: uid,
+      summary: summary,
+      description: description,
+      start: start,
+      end: end,
+      isAllDay: isAllDay,
+    );
+  }
+
+  setTime(DateTime start, DateTime end) {
+    isAllDay = false;
+
+    this.start = start.toUtc();
+    this.end = end.toUtc();
+  }
+
+  setTimeAsAllDay(DateTime start, DateTime end) {
+    isAllDay = true;
+
+    final startTime = start.toLocal();
+    final startDate = Date.fromTime(startTime);
+
+    this.start = startDate.utcTime();
+
+    final endTime = end.toLocal();
+    final endDate = Date.fromTime(endTime);
+
+    this.end = endDate.utcTime();
+  }
+
+  setEnd(DateTime time) {
+    end = time.toUtc();
+  }
+
+  DateTime localStart() {
+    if (isAllDay) {
+      return Date.fromTime(start).localTime();
+    } else {
+      return start.toLocal();
+    }
+  }
+
+  DateTime? localEnd() {
+    if (isAllDay && end != null) {
+      return Date.fromTime(end!).localTime();
+    } else if (isAllDay && end == null) {
+      final startDate = Date.fromTime(start);
+      final endDate = startDate.add(1);
+
+      return endDate.localTime();
+    } else {
+      return end?.toLocal();
+    }
   }
 }

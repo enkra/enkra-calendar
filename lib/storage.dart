@@ -8,7 +8,7 @@ import 'date.dart';
 
 class IEventsInDb extends IEvents {
   @override
-  Future<List<IEvent>> fetchEvent(Date start, Date end) async {
+  Future<List<CalendarEvent>> fetchEvent(Date start, Date end) async {
     final startTime = start.localTime().toUtc();
     final endTime = end.localEndOfDay().toUtc();
 
@@ -17,8 +17,10 @@ class IEventsInDb extends IEvents {
        fetchEvent(start: "${startTime}", end: "${endTime}") {
            uid
            start
+           end
            summary
            description
+           isAllDay
         }
      }
      """;
@@ -27,26 +29,29 @@ class IEventsInDb extends IEvents {
         (await CalendarNative.queryCalendarDb(ops, null))['fetchEvent']!;
 
     return events
-        .map((e) => IEvent(
+        .map((e) => CalendarEvent(
               uid: e["uid"],
-              status: IEventStatus.CONFIRMED,
               start: DateTime.parse(e["start"]),
+              end: DateTime.parse(e["end"]),
               summary: e["summary"],
               description: e["description"],
+              isAllDay: e["isAllDay"] as bool,
             ))
         .toList();
   }
 
   @override
-  Future<void> add(IEvent event) async {
+  Future<void> add(CalendarEvent event) async {
     final ops = """
-     mutation AddEvent(\$summary: String!, \$description: String){
+     mutation AddEvent(\$summary: String!, \$description: String, \$isAllDay: Boolean!){
        addEvent(
          event: {
            uid: "${event.uid}",
            summary: \$summary,
            start: "${event.start.toUtc().toIso8601String()}",
+           end: "${event.end!.toUtc().toIso8601String()}",
            description: \$description,
+           isAllDay: \$isAllDay,
          }
        ) {
            uid
@@ -59,6 +64,7 @@ class IEventsInDb extends IEvents {
     final vars = jsonEncode({
       "summary": event.summary,
       "description": event.description,
+      "isAllDay": event.isAllDay,
     });
 
     await CalendarNative.queryCalendarDb(ops, vars);

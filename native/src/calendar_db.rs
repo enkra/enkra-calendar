@@ -100,7 +100,10 @@ struct NewEvent {
     uid: String,
     summary: String,
     start: chrono::DateTime<Utc>,
+    end: chrono::DateTime<Utc>,
     description: Option<String>,
+    #[graphql(name = "isAllDay")]
+    is_all_day: bool,
 }
 
 impl NewEvent {
@@ -109,7 +112,9 @@ impl NewEvent {
             uid: self.uid.clone(),
             summary: self.summary.clone(),
             start: self.start.clone(),
+            end: self.end.clone(),
             description: self.description.clone(),
+            is_all_day: self.is_all_day,
         }
     }
 }
@@ -119,7 +124,9 @@ struct Event {
     uid: String,
     summary: String,
     start: chrono::DateTime<Utc>,
+    end: chrono::DateTime<Utc>,
     description: Option<String>,
+    is_all_day: bool,
 }
 
 impl Event {
