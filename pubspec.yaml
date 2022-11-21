@@ -43,6 +43,7 @@ dependencies:
   nanoid: ^1.0.0
   path_provider: ^2.0.9
   isolate: ^2.0.3
+  package_info_plus: ^1.4.2
 
 dev_dependencies:
   flutter_test:

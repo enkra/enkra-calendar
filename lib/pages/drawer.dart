@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:functional_widget_annotation/functional_widget_annotation.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 part 'drawer.g.dart';
 
@@ -63,36 +64,70 @@ Widget navDrawer(BuildContext context) {
   );
 
   final drawerItems = Container(
-    color: Colors.grey[100],
-    child: ListView(
-      children: [
-        drawerHeader,
-        const ListTile(
-          title: Text(
-            "About",
-          ),
-          leading: SizedBox.square(
-            dimension: 40,
-            child: Icon(
-              Icons.help_rounded,
-              color: Colors.grey,
+      color: Colors.grey[100],
+      child: SafeArea(
+          child: Padding(
+        padding: const EdgeInsets.only(bottom: 45),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            drawerHeader,
+            Expanded(
+              child: ListView(
+                children: const [
+                  ListTile(
+                    title: Text(
+                      "About",
+                    ),
+                    leading: SizedBox.square(
+                      dimension: 40,
+                      child: Icon(
+                        Icons.help_rounded,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                  ListTile(
+                    title: Text(
+                      "Licenses",
+                    ),
+                    leading: SizedBox.square(
+                      dimension: 40,
+                      child: Icon(
+                        Icons.source_rounded,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+            const _VersionTag(),
+          ],
         ),
-        const ListTile(
-          title: Text(
-            "Licenses",
-          ),
-          leading: SizedBox.square(
-            dimension: 40,
-            child: Icon(
-              Icons.source_rounded,
-              color: Colors.grey,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
+      )));
   return Drawer(child: drawerItems);
+}
+
+@swidget
+Widget _versionTag(BuildContext context) {
+  return FutureBuilder(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, AsyncSnapshot<PackageInfo> s) {
+        final packageInfo = s.data;
+
+        var appString = "Abraca Calendar";
+
+        if (packageInfo != null) {
+          final version = packageInfo.version;
+          final buildNumber = packageInfo.buildNumber;
+
+          appString = "Abraca Calendar $version ($buildNumber)";
+        }
+
+        return Text(
+          appString,
+          style: const TextStyle(color: Colors.grey),
+        );
+      });
 }
