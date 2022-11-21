@@ -3,6 +3,7 @@ import 'package:functional_widget_annotation/functional_widget_annotation.dart';
 import 'package:provider/provider.dart';
 import "package:collection/collection.dart";
 import 'package:intl/intl.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'common.dart';
 import 'tab_page.dart';
@@ -29,61 +30,88 @@ Widget buildInboxPage(
   );
 }
 
-@swidget
-Widget inbox(BuildContext context) {
-  final scrollController = ScrollController();
+class Inbox extends StatelessWidget {
+  const Inbox({Key? key}) : super(key: key);
 
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    scrollController.jumpTo(scrollController.position.maxScrollExtent);
-  });
+  renderNotes(notes) {
+    final groupedNotes =
+        groupBy<InboxNote, Date>(notes, (n) => Date.fromTime(n.time));
 
-  return Column(children: [
-    Expanded(
-      child:
-          Consumer<CalendarManager>(builder: (context, calendarManager, child) {
-        final notes = calendarManager.inboxNotes();
-        return FutureBuilder(
-            future: notes,
-            builder: (context, AsyncSnapshot<List<InboxNote>> f) {
-              final notes = f.data ?? [];
+    List<Widget> noteItems = [];
+    for (var d in groupedNotes.keys) {
+      // add Time tag widgets
+      noteItems.add(_Time(date: d));
 
-              final groupedNotes =
-                  groupBy<InboxNote, Date>(notes, (n) => Date.fromTime(n.time));
+      final notes = groupedNotes[d]!.map((n) => _TextTask(note: n));
 
-              List<Widget> noteItems = [];
-              for (var d in groupedNotes.keys) {
-                noteItems.add(_Time(date: d));
+      noteItems.addAll(notes);
+    }
 
-                final notes = groupedNotes[d]!.map((n) => _TextTask(note: n));
+    return noteItems;
+  }
 
-                noteItems.addAll(notes);
-              }
+  renderContent(notes, scrollController) {
+    if (notes.isEmpty) {
+      return const _Placeholder();
+    } else {
+      final noteItems = renderNotes(notes);
 
-              return ListView.builder(
-                padding: const EdgeInsets.only(
-                  left: 32,
-                  right: 32,
-                  top: 16,
-                ),
-                itemCount: noteItems.length,
-                itemBuilder: (context, index) {
-                  return noteItems[index];
-                },
-                controller: scrollController,
-              );
-            });
-      }),
-    ),
-    _Input(
-      onNoteCreated: (_) {
-        scrollController.animateTo(
-          scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      },
-    ),
-  ]);
+      return ListView.builder(
+        padding: const EdgeInsets.only(
+          left: 32,
+          right: 32,
+          top: 16,
+        ),
+        itemCount: noteItems.length,
+        itemBuilder: (context, index) {
+          return noteItems[index];
+        },
+        controller: scrollController,
+      );
+    }
+  }
+
+  onNoteCreated(scrollController) {
+    if (scrollController.hasClients) {
+      scrollController.animateTo(
+        scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scrollController = ScrollController();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (scrollController.hasClients) {
+        scrollController.jumpTo(scrollController.position.maxScrollExtent);
+      }
+    });
+
+    return Column(children: [
+      Expanded(
+        child: Consumer<CalendarManager>(
+            builder: (context, calendarManager, child) {
+          final notes = calendarManager.inboxNotes();
+          return FutureBuilder(
+              future: notes,
+              builder: (context, AsyncSnapshot<List<InboxNote>> f) {
+                final notes = f.data ?? [];
+
+                return renderContent(notes, scrollController);
+              });
+        }),
+      ),
+      _Input(
+        onNoteCreated: (_) {
+          onNoteCreated(scrollController);
+        },
+      ),
+    ]);
+  }
 }
 
 @swidget
@@ -244,5 +272,48 @@ Widget __time(BuildContext context, {required Date date}) {
         ),
       ),
     ),
+  );
+}
+
+@swidget
+Widget __placeholder(
+  BuildContext context,
+) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SizedBox(height: 16),
+      Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SvgPicture.asset("assets/checklist.svg"),
+              const SizedBox(height: 15),
+              const Text(
+                "Empty inbox",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                "Note what you want to do here quickly",
+                style: TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
+              const Text(
+                "and shedule them later.",
+                style: TextStyle(
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
   );
 }
