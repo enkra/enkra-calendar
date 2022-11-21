@@ -3,6 +3,8 @@ import 'package:functional_widget_annotation/functional_widget_annotation.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'license.dart';
+
 part 'drawer.g.dart';
 
 @hwidget
@@ -94,7 +96,7 @@ Widget navDrawer(BuildContext context) {
                       );
                     },
                   ),
-                  const ListTile(
+                  ListTile(
                     title: Text(
                       "Licenses",
                     ),
@@ -105,6 +107,13 @@ Widget navDrawer(BuildContext context) {
                         color: Colors.grey,
                       ),
                     ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => OssLicensesPage()),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -209,6 +218,54 @@ Widget _aboutPage(BuildContext context) {
                 )),
             const Spacer(),
             const _Copyright(),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+@swidget
+Widget _licensesPage(BuildContext context) {
+  final theme = Theme.of(context);
+
+  const intro =
+      "Abraca Calendar is a calendar app focused on privacy enhancement.";
+
+  return Scaffold(
+    appBar: AppBar(
+      leading: const BackButton(),
+    ),
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 30),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  backgroundColor: theme.colorScheme.primary,
+                  child: const Icon(Icons.calendar_month_outlined),
+                ),
+                const SizedBox(width: 10),
+                Text("Abraca Calender",
+                    style: TextStyle(
+                      fontSize: 24,
+                      color: theme.colorScheme.primary,
+                    )),
+              ],
+            ),
+            const SizedBox(height: 30),
+            const Text(intro,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                )),
+            const Spacer(),
             const SizedBox(height: 30),
           ],
         ),

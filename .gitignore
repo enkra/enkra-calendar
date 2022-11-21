@@ -52,3 +52,4 @@ jniLibs
 binding.h
 ffi.dart
 target
+lib/oss_licenses.dart
