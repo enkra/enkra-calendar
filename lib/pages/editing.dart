@@ -51,7 +51,7 @@ Widget editingPage(
                   );
                 }
 
-                Navigator.pop(context);
+                Navigator.pop(context, true);
               },
               child: const Text(
                 'Save',

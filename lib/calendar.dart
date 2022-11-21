@@ -30,10 +30,39 @@ abstract class IEvents {
   Future<void> remove(String uid);
 }
 
+class InboxNote {
+  String id;
+
+  DateTime time;
+  String content;
+
+  InboxNote({
+    required this.content,
+  })  : id = nanoid(),
+        time = DateTime.now();
+}
+
 class CalendarManager extends ChangeNotifier {
   final IEvents _events;
 
   final List<IEvent> _cached_events = <IEvent>[];
+
+  final List<InboxNote> _cached_notes = <InboxNote>[
+    InboxNote(content: "Meeting with Josh"),
+    InboxNote(content: "Clean room"),
+    InboxNote(content: "Shopping"),
+    InboxNote(content: "Do math homework"),
+    InboxNote(
+        content:
+            "Lorem Ipsum is simply dummy text of the printing and typesetting industry."
+            " Lorem Ipsum has been the industry's standard dummy text ever since the 1500s,"
+            " when an unknown printer took a galley of type and scrambled it to make a type"
+            " specimen book. It has survived not only five centuries, but also the leap into"
+            " electronic typesetting, remaining essentially unchanged. It was popularised in"
+            " the 1960s with the release of Letraset sheets containing Lorem Ipsum passages,"
+            " and more recently with desktop publishing software like Aldus PageMaker"
+            " including versions of Lorem Ipsum."),
+  ];
 
   CalendarManager(IEvents events)
       : _events = events,
@@ -100,5 +129,21 @@ class CalendarManager extends ChangeNotifier {
     final time = DateTime.now();
 
     return Date.fromTime(time);
+  }
+
+  List<InboxNote> inboxNotes() {
+    return _cached_notes;
+  }
+
+  addNote(InboxNote note) {
+    _cached_notes.add(note);
+
+    notifyListeners();
+  }
+
+  deleteNote(String noteId) {
+    _cached_notes.removeWhere((n) => n.id == noteId);
+
+    notifyListeners();
   }
 }

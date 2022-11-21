@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:functional_widget_annotation/functional_widget_annotation.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:ical/serializer.dart';
+import 'package:provider/provider.dart';
+import "package:collection/collection.dart";
+import 'package:intl/intl.dart';
 
 import 'common.dart';
 import 'tab_page.dart';
+import 'editing.dart';
+import '../calendar.dart';
+import '../date.dart';
 
 part 'inbox.g.dart';
 
@@ -27,36 +35,38 @@ Widget buildInboxPage(
 Widget inbox(BuildContext context) {
   return Column(children: [
     Expanded(
-      child: ListView(
-        padding: const EdgeInsets.only(
-          left: 32,
-          right: 32,
-          top: 16,
-        ),
-        children: const [
-          _TextTask("Meeting with Josh"),
-          _TextTask("Clean room"),
-          _TextTask("Shopping"),
-          _Time(),
-          _TextTask("Do math homework"),
-          _TextTask(
-              "Lorem Ipsum is simply dummy text of the printing and typesetting industry."
-              " Lorem Ipsum has been the industry's standard dummy text ever since the 1500s,"
-              " when an unknown printer took a galley of type and scrambled it to make a type"
-              " specimen book. It has survived not only five centuries, but also the leap into"
-              " electronic typesetting, remaining essentially unchanged. It was popularised in"
-              " the 1960s with the release of Letraset sheets containing Lorem Ipsum passages,"
-              " and more recently with desktop publishing software like Aldus PageMaker"
-              " including versions of Lorem Ipsum."),
-        ],
-      ),
+      child:
+          Consumer<CalendarManager>(builder: (context, calendarManager, child) {
+        final notes = calendarManager.inboxNotes();
+
+        final groupedNotes =
+            groupBy<InboxNote, Date>(notes, (n) => Date.fromTime(n.time));
+
+        List<Widget> noteItems = [];
+        for (var d in groupedNotes.keys) {
+          noteItems.add(_Time(date: d));
+
+          final notes = groupedNotes[d]!.map((n) => _TextTask(note: n));
+
+          noteItems.addAll(notes);
+        }
+
+        return ListView(
+          padding: const EdgeInsets.only(
+            left: 32,
+            right: 32,
+            top: 16,
+          ),
+          children: noteItems,
+        );
+      }),
     ),
     const _Input(),
   ]);
 }
 
 @swidget
-Widget _textTask(BuildContext context, String content) {
+Widget _textTask(BuildContext context, {required InboxNote note}) {
   final theme = Theme.of(context);
 
   return Padding(
@@ -66,7 +76,7 @@ Widget _textTask(BuildContext context, String content) {
           Color.alphaBlend(theme.primaryColor.withOpacity(0.05), Colors.white),
       leadingColor: Colors.transparent,
       child: Text(
-        content,
+        note.content,
         textAlign: TextAlign.justify,
         maxLines: 10,
         overflow: TextOverflow.ellipsis,
@@ -76,6 +86,56 @@ Widget _textTask(BuildContext context, String content) {
           fontWeight: FontWeight.w400,
         ),
       ),
+      onLongPress: () {
+        showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              final calendarManager =
+                  Provider.of<CalendarManager>(context, listen: false);
+
+              final leadDialog = SimpleDialog(
+                children: <Widget>[
+                  SimpleDialogOption(
+                    child: const Text('Schedule'),
+                    onPressed: () async {
+                      Navigator.pop(context);
+
+                      var content = note.content;
+                      if (content.length > 16) {
+                        content = note.content.substring(0, 16);
+                      }
+
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => EditingPage(
+                                  initialDay: Date.fromTime(DateTime.now()),
+                                  eventToEdit: IEvent(
+                                    status: IEventStatus.CONFIRMED,
+                                    start: DateTime.now(),
+                                    summary: content,
+                                    description: note.content,
+                                  ),
+                                )),
+                      );
+
+                      if (result ?? false) {
+                        calendarManager.deleteNote(note.id);
+                      }
+                    },
+                  ),
+                  SimpleDialogOption(
+                    child: const Text('Delete'),
+                    onPressed: () {
+                      calendarManager.deleteNote(note.id);
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
+              );
+              return leadDialog;
+            });
+      },
     ),
   );
 }
@@ -83,6 +143,8 @@ Widget _textTask(BuildContext context, String content) {
 @swidget
 Widget _input(BuildContext context) {
   final theme = Theme.of(context);
+
+  final controller = TextEditingController();
 
   return SizedBox(
     height: 56,
@@ -102,12 +164,20 @@ Widget _input(BuildContext context) {
                 color: theme.primaryColor.withOpacity(0.05),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Center(
+              child: Center(
                 child: TextField(
-                  decoration: InputDecoration(
+                  controller: controller,
+                  decoration: const InputDecoration(
                     hintText: "Type your todos",
                     border: InputBorder.none,
                   ),
+                  onSubmitted: (val) {
+                    final calendarManager =
+                        Provider.of<CalendarManager>(context, listen: false);
+                    calendarManager.addNote(InboxNote(content: val));
+
+                    controller.clear();
+                  },
                 ),
               ),
             )),
@@ -126,13 +196,13 @@ Widget _input(BuildContext context) {
 }
 
 @swidget
-Widget _time(BuildContext context) {
-  return const Padding(
-    padding: EdgeInsets.symmetric(vertical: 4),
+Widget _time(BuildContext context, {required Date date}) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(vertical: 4),
     child: Center(
       child: Text(
-        "20:00",
-        style: TextStyle(
+        date.format(DateFormat("MMM d, y")),
+        style: const TextStyle(
           color: Colors.grey,
           fontSize: 12,
         ),
