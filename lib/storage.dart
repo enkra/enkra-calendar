@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:optional/optional.dart';
 
 import 'calendar.dart';
 import 'native.dart';
@@ -78,6 +79,37 @@ class IEventsInDb extends IEvents {
      """;
 
     await CalendarNative.queryCalendarDb(ops, null);
+  }
+
+  @override
+  Future<CalendarEvent?> get(String uid) async {
+    final ops = """
+     query {
+       event(uid: "$uid") {
+           uid
+           start
+           end
+           summary
+           description
+           isAllDay
+       }
+     }
+     """;
+
+    await CalendarNative.queryCalendarDb(ops, null);
+
+    final event = (await CalendarNative.queryCalendarDb(ops, null))['event'];
+
+    return Optional.ofNullable(event)
+        .map((dynamic e) => CalendarEvent(
+              uid: e["uid"],
+              start: DateTime.parse(e["start"]),
+              end: DateTime.parse(e["end"]),
+              summary: e["summary"],
+              description: e["description"],
+              isAllDay: e["isAllDay"] as bool,
+            ))
+        .orElseNull;
   }
 }
 

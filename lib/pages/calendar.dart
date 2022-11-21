@@ -11,6 +11,7 @@ import '../date.dart';
 import 'common.dart';
 import 'tab_page.dart';
 import 'editing.dart';
+import 'detail.dart';
 
 part 'calendar.g.dart';
 
@@ -479,9 +480,8 @@ Widget __eventBox(BuildContext context, CalendarEvent event) {
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) => EditingPage(
-                    initialDay: Date.fromTime(DateTime.now()),
-                    eventToEdit: event,
+              builder: (context) => EventDetailPage(
+                    event: event,
                   )),
         );
       },
@@ -494,6 +494,20 @@ Widget __eventBox(BuildContext context, CalendarEvent event) {
 
               final leadDialog = SimpleDialog(
                 children: <Widget>[
+                  SimpleDialogOption(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => EditingPage(
+                                  initialDay: Date.fromTime(DateTime.now()),
+                                  eventToEdit: event,
+                                )),
+                      );
+                    },
+                    child: const Text('Edit'),
+                  ),
                   SimpleDialogOption(
                     onPressed: () {
                       if (event.uid != null) {

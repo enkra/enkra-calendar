@@ -28,6 +28,8 @@ abstract class IEvents {
   Future<void> add(CalendarEvent event);
 
   Future<void> remove(String uid);
+
+  Future<CalendarEvent?> get(String uid);
 }
 
 class InboxNote {
@@ -84,6 +86,10 @@ class CalendarManager extends ChangeNotifier {
     _events.remove(uid);
 
     notifyListeners();
+  }
+
+  Future<CalendarEvent?> getEvent(String uid) {
+    return _events.get(uid);
   }
 
   Future<Map<Date, DateEvent>> getByDateRange(Date start, Date end) async {
@@ -232,6 +238,17 @@ class CalendarEvent {
     } else {
       return end?.toLocal();
     }
+  }
+
+  bool isOneDay() {
+    if (end == null) {
+      return true;
+    }
+
+    final startDate = Date.fromTime(start);
+    final endDate = Date.fromTime(end!);
+
+    return startDate == endDate;
   }
 }
 

@@ -45,6 +45,7 @@ dependencies:
   package_info_plus: ^1.4.2
   url_launcher: ^6.0.20
   flutter_svg: ^1.1.1+1
+  optional: ^6.1.0+1
 
 dev_dependencies:
   flutter_test:

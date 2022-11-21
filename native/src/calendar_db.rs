@@ -199,6 +199,16 @@ impl Event {
 
         Ok(uid)
     }
+
+    fn get(db: &CalendarDb, uid: String) -> FieldResult<Option<Event>> {
+        let db = db.db.lock()?;
+
+        let calendar_events: KeyTable<String> = db.key_table(Self::TABLE)?;
+
+        let result: Option<Event> = calendar_events.as_ref().get(uid).data(&*db)?;
+
+        Ok(result)
+    }
 }
 
 #[derive(GraphQLInputObject, Clone, Serialize)]
@@ -279,6 +289,10 @@ impl Query {
 
     fn fetch_inbox_note(db: &CalendarDb) -> FieldResult<Vec<InboxNote>> {
         InboxNote::fetch(db)
+    }
+
+    fn event(db: &CalendarDb, uid: String) -> FieldResult<Option<Event>> {
+        Event::get(db, uid)
     }
 }
 
