@@ -125,6 +125,13 @@ Widget editingPage(
             Icons.content_copy,
           ),
           title: TextField(
+            controller: TextEditingController(
+              text: event.value.description,
+            ),
+            keyboardType: TextInputType.multiline,
+            textInputAction: TextInputAction.newline,
+            maxLines: null,
+            minLines: null,
             decoration: const InputDecoration(
               hintText: "Add description",
               border: InputBorder.none,

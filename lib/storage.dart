@@ -18,6 +18,7 @@ class IEventsInDb extends IEvents {
            uid
            start
            summary
+           description
         }
      }
      """;
@@ -31,6 +32,7 @@ class IEventsInDb extends IEvents {
               status: IEventStatus.CONFIRMED,
               start: DateTime.parse(e["start"]),
               summary: e["summary"],
+              description: e["description"],
             ))
         .toList();
   }
@@ -38,12 +40,13 @@ class IEventsInDb extends IEvents {
   @override
   Future<void> add(IEvent event) async {
     final ops = """
-     mutation AddEvent(\$summary: String!){
+     mutation AddEvent(\$summary: String!, \$description: String){
        addEvent(
          event: {
            uid: "${event.uid}",
            summary: \$summary,
            start: "${event.start.toUtc().toIso8601String()}",
+           description: \$description,
          }
        ) {
            uid
@@ -53,7 +56,10 @@ class IEventsInDb extends IEvents {
      }
      """;
 
-    final vars = jsonEncode({"summary": event.summary});
+    final vars = jsonEncode({
+      "summary": event.summary,
+      "description": event.description,
+    });
 
     await CalendarNative.queryCalendarDb(ops, vars);
   }
