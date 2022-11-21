@@ -1,12 +1,18 @@
 use anyhow::Result;
 
-use super::{empty_aead::EmptyAead, DeviceKms};
+use tink_aead::subtle::XChaCha20Poly1305;
+use tink_core::TinkError;
+
+use super::DeviceKms;
 
 pub struct AndroidKms;
 
 impl DeviceKms for AndroidKms {
     fn new_key_uri(&self) -> Result<String> {
-        let device_kms_uri = "enkra-android-kms://version/1/";
+        let random_key = tink_core::subtle::random::get_random_bytes(32);
+        let random_key = base64::encode_config(&random_key, base64::URL_SAFE_NO_PAD);
+
+        let device_kms_uri = format!("enkra-android-kms://version/1/{}", random_key);
 
         Ok(device_kms_uri.into())
     }
@@ -26,7 +32,7 @@ impl AndroidKms {
 // the data here. But Android Keystore is known to be pretty buggy on several phones.
 //  * https://github.com/google/tink/issues/535#issuecomment-912170221
 //  * https://issuetracker.google.com/issues/176215143
-// So we decide to implement a NonEncryption KMS. We use tink keyset as our master
+// So we decide to implement a Random key XChaCha20Poly1305 KMS. We use tink keyset as our master
 // key manager which can help us to upgrade the cipher schema in a compatible way.
 //
 // Otherwise, according to https://google.github.io/tink/javadoc/tink-android/HEAD-SNAPSHOT/com/google/crypto/tink/integration/android/AndroidKeysetManager.html
@@ -55,6 +61,17 @@ impl tink_core::registry::KmsClient for AndroidKmsClient {
             return Err("unsupported key_uri".into());
         }
 
-        Ok(Box::new(EmptyAead::new()))
+        let key = if let Some(rest) = key_uri.strip_prefix(Self::URI_PREFIX) {
+            rest
+        } else {
+            key_uri
+        };
+
+        let key = base64::decode_config(key, base64::URL_SAFE_NO_PAD)
+            .map_err(|e| TinkError::new(&format!("{}", e)))?;
+
+        let aead = XChaCha20Poly1305::new(&key)?;
+
+        Ok(Box::new(aead))
     }
 }
