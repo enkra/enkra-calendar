@@ -42,6 +42,7 @@ dependencies:
   scrollable_positioned_list: ^0.2.3
   nanoid: ^1.0.0
   path_provider: ^2.0.9
+  isolate: ^2.0.3
 
 dev_dependencies:
   flutter_test:

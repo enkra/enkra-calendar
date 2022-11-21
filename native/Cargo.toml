@@ -1,0 +1,41 @@
+[package]
+name = "native"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "native"
+crate-type = ["rlib"]
+
+[dependencies]
+tokio = { version = "1.17.0", features = ["rt-multi-thread"] }
+allo-isolate = "0.1.12"
+tink-core = "0.2.4"
+tink-aead = "0.2.4"
+tink-proto = "0.2.4"
+tink-daead = "0.2.4"
+anyhow = "1.0.56"
+base64 = "0.13.0"
+pickledb = "0.4.1"
+rusqlite = { version = "0.27.0", features = ["bundled-sqlcipher-vendored-openssl"] }
+nosqlite = { git = "https://github.com/abraca-app/nosqlite", rev = "28c6ce36c3cb87e33492c5cb3e156c817d24e704" }
+serde_json = "1.0.79"
+chrono = "0.4.19"
+hex = "0.4.3"
+once_cell = "1.10.0"
+futures = { version = "0.3.21", default-features = false }
+log = "0.4.16"
+log_err = "1.1.1"
+
+[target.'cfg(target_os = "android")'.dependencies]
+android_logger = "0.11.0"
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+simplelog = "0.11.2"
+
+[build-dependencies]
+cbindgen = "0.20.0"
+dart-bindgen = "0.1.8"
+
+[dev-dependencies]
+tempfile = "3.3.0"
