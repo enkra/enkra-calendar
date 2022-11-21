@@ -122,7 +122,6 @@ args = [
   "--target", 
   "${ANDROID_BUILD_TARGET}", 
   "build",
-  "-Zbuild-std",
 ]
 install_crate = false
 
@@ -138,7 +137,6 @@ args = [
   "${ANDROID_BUILD_TARGET}", 
   "build",
   "--release",
-  "-Zbuild-std",
 ]
 install_crate = false
 

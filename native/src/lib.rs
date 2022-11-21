@@ -73,7 +73,7 @@ impl CalendarNative {
 
         let mut secure_local_storage =
             SecureLocalStorage::new(data_dir.join(Self::SECURE_LOCAL_STOAGE_FILE), &device_kms)
-                .unwrap();
+                .log_unwrap();
 
         let password = Self::get_or_generate_calendar_db_key(&mut secure_local_storage);
         let calendar_db =

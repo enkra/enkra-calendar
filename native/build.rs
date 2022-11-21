@@ -47,9 +47,8 @@ fn main() {
     };
     let target_arch = std::env::var("TARGET").unwrap();
 
-    // only x86_64 and aarch64(arm64) builds have this error
+    // only x86_64 builds have this error
     let ndk_target_arch = match target_arch.as_str() {
-        "aarch64-linux-android" => Some("aarch64"),
         "x86_64-linux-android" => Some("x86_64"),
         _ => None,
     };
