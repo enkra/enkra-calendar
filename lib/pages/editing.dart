@@ -16,7 +16,7 @@ Widget editingPage(
   BuildContext context, {
   required Date initialDay,
 }) {
-  final summary = useState("");
+  final summary = useRef("");
 
   final now = DateTime.now();
 
@@ -24,9 +24,11 @@ Widget editingPage(
       DateTime(initialDay.year, initialDay.month, initialDay.day, now.hour + 1);
   final initialEnd = initialStart.add(const Duration(hours: 1));
 
-  final start = useState<DateTime>(initialStart);
+  final start = useRef<DateTime>(initialStart);
 
-  final description = useState<String?>("");
+  final description = useRef<String?>("");
+
+  var focusNode = FocusNode();
 
   return Scaffold(
     appBar: AppBar(
@@ -72,7 +74,7 @@ Widget editingPage(
               border: InputBorder.none,
               hintStyle: TextStyle(
                 fontSize: 26,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w400,
                 color: Colors.black,
               ),
             ),
@@ -80,6 +82,9 @@ Widget editingPage(
               fontSize: 26,
               fontWeight: FontWeight.bold,
             ),
+            focusNode: focusNode,
+            autofocus: true,
+            textInputAction: TextInputAction.done,
             onChanged: (val) => summary.value = val,
           ),
         ),
@@ -127,6 +132,7 @@ Widget editingPage(
         ),
       ],
     ),
+    resizeToAvoidBottomInset: false,
   );
 }
 
