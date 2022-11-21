@@ -63,7 +63,7 @@ dev_dependencies:
   functional_widget: ^0.10.0
   build_runner: ^2.1.5
   flutter_oss_licenses: ^2.0.0+1
-  flutter_launcher_icons: ^0.10.0
+  flutter_launcher_icons: ^0.13.1
   rename: ^2.0.1
 
 # For information on the generic Dart part of this file, see the
@@ -106,6 +106,9 @@ flutter:
 
 flutter_icons:
   android: "ic_launcher"
-  image_path: "assets/logo.png"
+  image_path_android: "assets/rounded-logo.png"
   adaptive_icon_background: "#22C55E"
   adaptive_icon_foreground: "assets/logo-foreground.png"
+  ios: true
+  image_path_ios: "unbundled_assets/logo.png"
+  remove_alpha_ios: true
