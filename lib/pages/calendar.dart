@@ -168,11 +168,12 @@ Widget _calendarPanel(
                     child: Container(
                       height: 4,
                       width: 4,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: Colors.orange,
                       ),
                     )))
+                .take(4)
                 .toList(),
           );
         },
