@@ -127,18 +127,23 @@ impl SecureLocalStorage {
     }
 
     fn load_db<P: AsRef<Path> + Clone>(db_path: P) -> PickleDb {
-        match PickleDb::load(
-            db_path.clone(),
-            PickleDbDumpPolicy::AutoDump,
-            SerializationMethod::Cbor,
-        ) {
-            Ok(load) => load,
-            Err(_) => PickleDb::new(
+        if !db_path.as_ref().exists() {
+            return PickleDb::new(
                 db_path,
                 PickleDbDumpPolicy::AutoDump,
                 SerializationMethod::Cbor,
-            ),
+            );
         }
+
+        PickleDb::load(
+            db_path.clone(),
+            PickleDbDumpPolicy::AutoDump,
+            SerializationMethod::Cbor,
+        )
+        .log_expect(&format!(
+            "load existed secure_local_stoage db error: {}",
+            db_path.as_ref().file_name().unwrap().to_string_lossy()
+        ))
     }
 
     fn read_or_generate_master_key(
