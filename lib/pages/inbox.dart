@@ -43,31 +43,36 @@ Widget inbox(BuildContext context) {
       child:
           Consumer<CalendarManager>(builder: (context, calendarManager, child) {
         final notes = calendarManager.inboxNotes();
+        return FutureBuilder(
+            future: notes,
+            builder: (context, AsyncSnapshot<List<InboxNote>> f) {
+              final notes = f.data ?? [];
 
-        final groupedNotes =
-            groupBy<InboxNote, Date>(notes, (n) => Date.fromTime(n.time));
+              final groupedNotes =
+                  groupBy<InboxNote, Date>(notes, (n) => Date.fromTime(n.time));
 
-        List<Widget> noteItems = [];
-        for (var d in groupedNotes.keys) {
-          noteItems.add(_Time(date: d));
+              List<Widget> noteItems = [];
+              for (var d in groupedNotes.keys) {
+                noteItems.add(_Time(date: d));
 
-          final notes = groupedNotes[d]!.map((n) => _TextTask(note: n));
+                final notes = groupedNotes[d]!.map((n) => _TextTask(note: n));
 
-          noteItems.addAll(notes);
-        }
+                noteItems.addAll(notes);
+              }
 
-        return ListView.builder(
-          padding: const EdgeInsets.only(
-            left: 32,
-            right: 32,
-            top: 16,
-          ),
-          itemCount: noteItems.length,
-          itemBuilder: (context, index) {
-            return noteItems[index];
-          },
-          controller: scrollController,
-        );
+              return ListView.builder(
+                padding: const EdgeInsets.only(
+                  left: 32,
+                  right: 32,
+                  top: 16,
+                ),
+                itemCount: noteItems.length,
+                itemBuilder: (context, index) {
+                  return noteItems[index];
+                },
+                controller: scrollController,
+              );
+            });
       }),
     ),
     _Input(

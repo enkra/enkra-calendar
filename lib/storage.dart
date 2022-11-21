@@ -6,15 +6,9 @@ import 'calendar.dart';
 import 'native.dart';
 import 'date.dart';
 
-class IEventsInJsonFile extends IEvents {
-  final Future<void> _setup;
-
-  IEventsInJsonFile() : _setup = CalendarNative.setup();
-
+class IEventsInDb extends IEvents {
   @override
   Future<List<IEvent>> fetchEvent(Date start, Date end) async {
-    await _setup;
-
     final startTime = start.localTime().toUtc();
     final endTime = end.localEndOfDay().toUtc();
 
@@ -43,8 +37,6 @@ class IEventsInJsonFile extends IEvents {
 
   @override
   Future<void> add(IEvent event) async {
-    await _setup;
-
     final ops = """
      mutation {
        addEvent(
@@ -66,11 +58,65 @@ class IEventsInJsonFile extends IEvents {
 
   @override
   Future<void> remove(uid) async {
-    await _setup;
-
     final ops = """
      mutation {
        deleteEvent(uid: "$uid")
+     }
+     """;
+
+    await CalendarNative.queryCalendarDb(ops);
+  }
+}
+
+class InboxNotesInDb extends InboxNotes {
+  @override
+  Future<List<InboxNote>> fetch() async {
+    final ops = """
+     query {
+       fetchInboxNote {
+           id
+           time
+           content
+        }
+     }
+     """;
+
+    List<dynamic> notes =
+        (await CalendarNative.queryCalendarDb(ops))['fetchInboxNote']!;
+
+    return notes
+        .map((n) => InboxNote.build(
+              id: n["id"],
+              content: n["content"],
+              time: DateTime.parse(n["time"]),
+            ))
+        .toList();
+  }
+
+  @override
+  Future<void> add(InboxNote note) async {
+    final ops = """
+     mutation {
+       addInboxNote(
+         note: {
+           id: "${note.id}",
+           time: "${note.time.toUtc().toIso8601String()}",
+           content: "${note.content}",
+         }
+       ) {
+           id
+        }
+     }
+     """;
+
+    await CalendarNative.queryCalendarDb(ops);
+  }
+
+  @override
+  Future<void> remove(String id) async {
+    final ops = """
+     mutation {
+       deleteInboxNote(id: "$id")
      }
      """;
 

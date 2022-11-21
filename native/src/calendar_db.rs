@@ -118,10 +118,12 @@ struct Event {
 }
 
 impl Event {
+    const TABLE: &'static str = "calendar_events";
+
     fn fetch(db: &CalendarDb, start: DateTime<Utc>, end: DateTime<Utc>) -> FieldResult<Vec<Event>> {
         let db = db.db.lock()?;
 
-        let calendar_events: KeyTable<String> = db.key_table("calendar_events")?;
+        let calendar_events: KeyTable<String> = db.key_table(Self::TABLE)?;
 
         // We used DateTime to validate the `start` and `end` times.
         // So below query is safe against SQL injection.
@@ -141,7 +143,7 @@ impl Event {
     fn add(db: &CalendarDb, event: NewEvent) -> FieldResult<Event> {
         let db = db.db.lock()?;
 
-        let calendar_events: KeyTable<String> = db.key_table("calendar_events".to_owned())?;
+        let calendar_events: KeyTable<String> = db.key_table(Self::TABLE)?;
 
         // has id in database
         if calendar_events
@@ -173,7 +175,7 @@ impl Event {
     fn delete(db: &CalendarDb, uid: String) -> FieldResult<String> {
         let db = db.db.lock()?;
 
-        let calendar_events: KeyTable<String> = db.key_table("calendar_events".to_owned())?;
+        let calendar_events: KeyTable<String> = db.key_table(Self::TABLE)?;
 
         let table_name = calendar_events.0.name;
 
@@ -184,6 +186,70 @@ impl Event {
         )?;
 
         Ok(uid)
+    }
+}
+
+#[derive(GraphQLInputObject, Clone, Serialize)]
+struct NewInboxNote {
+    id: String,
+    content: String,
+    time: chrono::DateTime<Utc>,
+}
+
+impl NewInboxNote {
+    fn to_inbox_note(&self) -> InboxNote {
+        InboxNote {
+            id: self.id.clone(),
+            content: self.content.clone(),
+            time: self.time.clone(),
+        }
+    }
+}
+
+#[derive(GraphQLObject, Clone, Deserialize, Debug, PartialEq)]
+struct InboxNote {
+    id: String,
+    content: String,
+    time: chrono::DateTime<Utc>,
+}
+
+impl InboxNote {
+    const TABLE: &'static str = "calendar_inbox_notes";
+
+    fn fetch(db: &CalendarDb) -> FieldResult<Vec<InboxNote>> {
+        let db = db.db.lock()?;
+
+        let calendar_events: KeyTable<String> = db.key_table(Self::TABLE)?;
+
+        let result: Vec<InboxNote> = calendar_events.as_ref().iter().data(&*db)?;
+
+        Ok(result)
+    }
+
+    fn add(db: &CalendarDb, note: NewInboxNote) -> FieldResult<InboxNote> {
+        let db = db.db.lock()?;
+
+        let calendar_events: KeyTable<String> = db.key_table(Self::TABLE)?;
+
+        calendar_events.insert(note.id.clone(), note.clone(), &*db)?;
+
+        Ok(note.to_inbox_note())
+    }
+
+    fn delete(db: &CalendarDb, id: String) -> FieldResult<String> {
+        let db = db.db.lock()?;
+
+        let calendar_events: KeyTable<String> = db.key_table(Self::TABLE)?;
+
+        let table_name = calendar_events.0.name;
+
+        // Use rusqlite instead of nosqlite to avoid SQL injection
+        db.as_ref().execute(
+            &format!("DELETE FROM {} WHERE id = ?1", table_name),
+            params![id],
+        )?;
+
+        Ok(id)
     }
 }
 
@@ -198,6 +264,10 @@ impl Query {
     ) -> FieldResult<Vec<Event>> {
         Event::fetch(db, start, end)
     }
+
+    fn fetch_inbox_note(db: &CalendarDb) -> FieldResult<Vec<InboxNote>> {
+        InboxNote::fetch(db)
+    }
 }
 
 struct Mutation;
@@ -210,6 +280,14 @@ impl Mutation {
 
     pub fn delete_event(db: &CalendarDb, uid: String) -> FieldResult<String> {
         Event::delete(db, uid)
+    }
+
+    pub fn add_inbox_note(db: &CalendarDb, note: NewInboxNote) -> FieldResult<InboxNote> {
+        InboxNote::add(db, note)
+    }
+
+    pub fn delete_inbox_note(db: &CalendarDb, id: String) -> FieldResult<String> {
+        InboxNote::delete(db, id)
     }
 }
 

@@ -41,30 +41,30 @@ class InboxNote {
     required this.content,
   })  : id = nanoid(),
         time = DateTime.now();
+
+  InboxNote.build({
+    required this.id,
+    required this.time,
+    required this.content,
+  });
+}
+
+abstract class InboxNotes {
+  Future<List<InboxNote>> fetch();
+
+  Future<void> add(InboxNote note);
+
+  Future<void> remove(String id);
 }
 
 class CalendarManager extends ChangeNotifier {
   final IEvents _events;
 
-  final List<InboxNote> _cached_notes = <InboxNote>[
-    InboxNote(content: "Meeting with Josh"),
-    InboxNote(content: "Clean room"),
-    InboxNote(content: "Shopping"),
-    InboxNote(content: "Do math homework"),
-    InboxNote(
-        content:
-            "Lorem Ipsum is simply dummy text of the printing and typesetting industry."
-            " Lorem Ipsum has been the industry's standard dummy text ever since the 1500s,"
-            " when an unknown printer took a galley of type and scrambled it to make a type"
-            " specimen book. It has survived not only five centuries, but also the leap into"
-            " electronic typesetting, remaining essentially unchanged. It was popularised in"
-            " the 1960s with the release of Letraset sheets containing Lorem Ipsum passages,"
-            " and more recently with desktop publishing software like Aldus PageMaker"
-            " including versions of Lorem Ipsum."),
-  ];
+  final InboxNotes _inboxNotes;
 
-  CalendarManager(IEvents events)
+  CalendarManager(IEvents events, InboxNotes inboxNotes)
       : _events = events,
+        _inboxNotes = inboxNotes,
         super();
 
   createEvent(IEvent event) {
@@ -109,18 +109,21 @@ class CalendarManager extends ChangeNotifier {
     return Date.fromTime(time);
   }
 
-  List<InboxNote> inboxNotes() {
-    return _cached_notes;
+  Future<List<InboxNote>> inboxNotes() async {
+    return (await _inboxNotes.fetch()).map((n) {
+      n.time = n.time.toLocal();
+      return n;
+    }).toList();
   }
 
   addNote(InboxNote note) {
-    _cached_notes.add(note);
+    _inboxNotes.add(note);
 
     notifyListeners();
   }
 
   deleteNote(String noteId) {
-    _cached_notes.removeWhere((n) => n.id == noteId);
+    _inboxNotes.remove(noteId);
 
     notifyListeners();
   }

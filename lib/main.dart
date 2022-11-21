@@ -18,7 +18,9 @@ void main() {
 
   runApp(
     ChangeNotifierProvider(
-      create: (context) => CalendarManager(IEventsInJsonFile()),
+      create: (context) {
+        return CalendarManager(IEventsInDb(), InboxNotesInDb());
+      },
       child: const MyApp(),
     ),
   );

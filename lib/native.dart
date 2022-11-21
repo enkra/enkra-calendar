@@ -8,6 +8,8 @@ import 'package:path_provider/path_provider.dart';
 import 'ffi.dart' as native;
 
 class CalendarNative {
+  static final _setup = CalendarNative.setup();
+
   static setup() async {
     native.store_dart_post_cobject(NativeApi.postCObject);
 
@@ -15,6 +17,8 @@ class CalendarNative {
 
     await _init(dataDir);
   }
+
+  static ensureSetup() async => _setup;
 
   static Future<void> _init(String dataDir) {
     final completer = Completer<bool>();
@@ -32,6 +36,8 @@ class CalendarNative {
   }
 
   static Future<Map<String, dynamic>> queryCalendarDb(String ops) async {
+    await ensureSetup();
+
     final completer = Completer<String>();
     final sendPort = singleCompletePort(completer);
 
