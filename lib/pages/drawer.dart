@@ -74,20 +74,27 @@ Widget navDrawer(BuildContext context) {
             drawerHeader,
             Expanded(
               child: ListView(
-                children: const [
+                children: [
                   ListTile(
-                    title: Text(
+                    title: const Text(
                       "About",
                     ),
-                    leading: SizedBox.square(
+                    leading: const SizedBox.square(
                       dimension: 40,
                       child: Icon(
                         Icons.help_rounded,
                         color: Colors.grey,
                       ),
                     ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const _AboutPage()),
+                      );
+                    },
                   ),
-                  ListTile(
+                  const ListTile(
                     title: Text(
                       "Licenses",
                     ),
@@ -130,4 +137,82 @@ Widget _versionTag(BuildContext context) {
           style: const TextStyle(color: Colors.grey),
         );
       });
+}
+
+@swidget
+Widget _copyright(BuildContext context) {
+  return FutureBuilder(
+      future: PackageInfo.fromPlatform(),
+      builder: (context, AsyncSnapshot<PackageInfo> s) {
+        final packageInfo = s.data;
+
+        var versionString = "";
+
+        if (packageInfo != null) {
+          final version = packageInfo.version;
+          final buildNumber = packageInfo.buildNumber;
+
+          versionString = "$version ($buildNumber)";
+        }
+        return Column(
+          children: [
+            Text(
+              versionString,
+              style: const TextStyle(fontWeight: FontWeight.w400),
+            ),
+            const Text(
+              "Copyright @ Abraca Apps 2022",
+              style: TextStyle(fontWeight: FontWeight.w400),
+            ),
+          ],
+        );
+      });
+}
+
+@swidget
+Widget _aboutPage(BuildContext context) {
+  final theme = Theme.of(context);
+
+  const intro =
+      "Abraca Calendar is a calendar app focused on privacy enhancement.";
+  return Scaffold(
+    appBar: AppBar(
+      leading: const BackButton(),
+    ),
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 30),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  backgroundColor: theme.colorScheme.primary,
+                  child: const Icon(Icons.calendar_month_outlined),
+                ),
+                const SizedBox(width: 10),
+                Text("Abraca Calender",
+                    style: TextStyle(
+                      fontSize: 24,
+                      color: theme.colorScheme.primary,
+                    )),
+              ],
+            ),
+            const SizedBox(height: 30),
+            const Text(intro,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                )),
+            const Spacer(),
+            const _Copyright(),
+            const SizedBox(height: 30),
+          ],
+        ),
+      ),
+    ),
+  );
 }
