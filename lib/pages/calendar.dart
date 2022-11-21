@@ -306,6 +306,21 @@ Widget _eventList(
       ],
     );
   } else {
+    // Sort events for a more clear view
+    event.events.sort((a, b) {
+      if (a.isAllDay && b.isAllDay) {
+        return a.summary!.compareTo(b.summary!);
+      }
+      if (a.isAllDay) {
+        return -1;
+      }
+      if (b.isAllDay) {
+        return 1;
+      }
+
+      return a.start.compareTo(b.start);
+    });
+
     final eventBoxes = event.events.map((e) => _EventBox(e));
 
     final eventCount = event.events.length;
@@ -452,11 +467,13 @@ Widget _eventBox(BuildContext context, CalendarEvent event) {
                       fontWeight: FontWeight.w600,
                     )),
                 const SizedBox(height: 8),
-                Text(time,
-                    style: const TextStyle(
-                      color: Color(0xff808691),
-                      fontWeight: FontWeight.w400,
-                    )),
+                event.isAllDay
+                    ? Container()
+                    : Text(time,
+                        style: const TextStyle(
+                          color: Color(0xff808691),
+                          fontWeight: FontWeight.w400,
+                        )),
               ],
             ),
           ],
