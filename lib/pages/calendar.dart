@@ -68,7 +68,7 @@ Widget calendar(
           vertical: 16.0,
         ),
         child: _CalendarPanel(
-            focusedDay: selectedDay.value,
+            initialDay: selectedDay.value,
             onDaySelected: (day) {
               final date = Date.fromTime(day);
 
@@ -96,26 +96,31 @@ Widget calendar(
 @hwidget
 Widget _calendarPanel(
   BuildContext context, {
-  required Date focusedDay,
+  required Date initialDay,
   void Function(DateTime day)? onDaySelected,
 }) {
-  final firstDay = focusedDay.substract(90);
-  final lastDay = focusedDay.add(90);
+  final today = Date.fromTime(DateTime.now());
+
+  final firstDay = today.substract(365 * 2);
+  final lastDay = today.add(365 * 2);
 
   final theme = Theme.of(context);
 
   final calendarFormat = useState(CalendarFormat.month);
 
+  final focusedDay = useRef(initialDay.utcTime());
+  final selectedDay = useState(initialDay.utcTime());
+
   return Consumer<CalendarManager>(builder: (context, calendarManager, child) {
     return TableCalendar<IEvent>(
       firstDay: firstDay.utcTime(),
       lastDay: lastDay.utcTime(),
-      focusedDay: focusedDay.utcTime(),
+      focusedDay: focusedDay.value,
       availableCalendarFormats: const {
         CalendarFormat.month: 'Month',
         CalendarFormat.week: 'Week',
       },
-      selectedDayPredicate: (day) => isSameDay(focusedDay.utcTime(), day),
+      selectedDayPredicate: (day) => isSameDay(selectedDay.value, day),
       calendarFormat: calendarFormat.value,
       eventLoader: (day) {
         return calendarManager.getByDate(Date.fromTime(day)).events;
@@ -184,16 +189,22 @@ Widget _calendarPanel(
           titleTextFormatter: (date, locale) =>
               DateFormat.MMMM(locale).format(date)),
       onDaySelected: (DateTime _selectedDay, DateTime _focusedDay) {
-        if (!isSameDay(focusedDay.utcTime(), _selectedDay)) {
+        if (!isSameDay(focusedDay.value, _selectedDay)) {
           onDaySelected?.call(_selectedDay);
         }
+        selectedDay.value = _selectedDay;
+        focusedDay.value = _focusedDay;
       },
       onFormatChanged: (format) {
         if (calendarFormat.value != format) {
           calendarFormat.value = format;
         }
       },
-      onPageChanged: (_focusedDay) {},
+      onPageChanged: (_focusedDay) {
+        focusedDay.value = _focusedDay;
+
+        onDaySelected?.call(_focusedDay);
+      },
     );
   });
 }
