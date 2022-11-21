@@ -4,6 +4,7 @@ import 'package:ical/serializer.dart';
 import 'package:provider/provider.dart';
 import "package:collection/collection.dart";
 import 'package:intl/intl.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 
 import 'common.dart';
 import 'tab_page.dart';
@@ -171,52 +172,69 @@ Widget _input(
 
   final controller = TextEditingController();
 
-  return SizedBox(
-    height: 56,
-    child: Material(
-      type: MaterialType.card,
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const SizedBox(width: 16),
-            Expanded(
-                child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: theme.primaryColor.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Center(
-                child: TextField(
-                  controller: controller,
-                  decoration: const InputDecoration(
-                    hintText: "Type your todos",
-                    border: InputBorder.none,
-                  ),
-                  onSubmitted: (val) {
-                    final calendarManager =
-                        Provider.of<CalendarManager>(context, listen: false);
-                    calendarManager.addNote(InboxNote(content: val));
-
-                    controller.clear();
-
-                    onNoteCreated?.call(val);
-                  },
+  return Material(
+    type: MaterialType.card,
+    elevation: 2,
+    child: Padding(
+      padding: const EdgeInsets.only(
+        top: 8,
+        bottom: 8,
+        left: 16,
+        right: 16,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+              child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: theme.primaryColor.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Center(
+              child: TextField(
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                maxLines: 5,
+                minLines: 1,
+                controller: controller,
+                decoration: const InputDecoration(
+                  hintText: "Type your todos",
+                  border: InputBorder.none,
+                  isDense: true,
                 ),
               ),
-            )),
-            const SizedBox(width: 16),
-            const Icon(Icons.image_outlined, color: Colors.grey),
-            const SizedBox(width: 16),
-            const Icon(Icons.photo_camera_outlined, color: Colors.grey),
-            const SizedBox(width: 16),
-            const Icon(Icons.keyboard_voice_outlined, color: Colors.grey),
-            const SizedBox(width: 16),
-          ],
-        ),
+            ),
+          )),
+          const SizedBox(width: 8),
+          IconButton(
+            padding: const EdgeInsets.all(0),
+            constraints: const BoxConstraints(
+              minWidth: 24,
+              minHeight: 24,
+            ),
+            icon: const Icon(
+              Icons.arrow_upward,
+            ),
+            color: theme.colorScheme.primary,
+            onPressed: () {
+              final content = controller.text.replaceAll('\n', "\\n");
+
+              if (content == "") {
+                return;
+              }
+
+              final calendarManager =
+                  Provider.of<CalendarManager>(context, listen: false);
+              calendarManager.addNote(InboxNote(content: content));
+
+              controller.clear();
+
+              onNoteCreated?.call(content);
+            },
+          ),
+        ],
       ),
     ),
   );
