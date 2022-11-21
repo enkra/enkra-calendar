@@ -24,7 +24,7 @@ class CalendarNative {
     final completer = Completer<bool>();
     final sendPort = singleCompletePort(completer);
 
-    native.init(sendPort.nativePort, dataDir.toNativeUtf8());
+    native.calendar_init(sendPort.nativePort, dataDir.toNativeUtf8());
 
     return completer.future;
   }

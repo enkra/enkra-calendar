@@ -19,7 +19,9 @@ use log::LevelFilter;
 
 #[cfg(target_os = "android")]
 use android_logger::Config;
-#[cfg(not(target_os = "android"))]
+#[cfg(target_os = "ios")]
+use oslog::OsLogger;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use simplelog::{ColorChoice, TermLogger, TerminalMode};
 
 mod calendar_db;
@@ -140,8 +142,13 @@ fn setup_logger() {
             .with_min_level(Level::Info)
             .with_tag("flutterust"),
     );
+    #[cfg(target_os = "ios")]
+    OsLogger::new("io.enkra.calendar")
+        .level_filter(LevelFilter::Info)
+        .init()
+        .unwrap();
 
-    #[cfg(not(target_os = "android"))]
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     TermLogger::init(
         LevelFilter::Info,
         simplelog::Config::default(),
@@ -152,7 +159,7 @@ fn setup_logger() {
 }
 
 #[no_mangle]
-pub extern "C" fn init(port: i64, data_dir: *const c_char) -> i32 {
+pub extern "C" fn calendar_init(port: i64, data_dir: *const c_char) -> i32 {
     setup_logger();
 
     tink_aead::init();
