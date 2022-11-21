@@ -50,12 +50,11 @@ Widget navDrawer(BuildContext context) {
       curve: Curves.fastOutSlowIn,
       child: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: theme.colorScheme.primary,
-            child: const Icon(Icons.calendar_month_outlined),
+          Image.asset(
+            'assets/logo.png',
           ),
           const SizedBox(width: 10),
-          Text("Abraca Calender",
+          Text("Abraca Calendar",
               style: TextStyle(
                 fontSize: 24,
                 color: theme.colorScheme.primary,
@@ -198,12 +197,12 @@ Widget __aboutPage(BuildContext context) {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircleAvatar(
-                  backgroundColor: theme.colorScheme.primary,
-                  child: const Icon(Icons.calendar_month_outlined),
+                Image.asset(
+                  'assets/logo.png',
+                  height: 45,
                 ),
                 const SizedBox(width: 10),
-                Text("Abraca Calender",
+                Text("Abraca Calendar",
                     style: TextStyle(
                       fontSize: 24,
                       color: theme.colorScheme.primary,
@@ -218,54 +217,6 @@ Widget __aboutPage(BuildContext context) {
                 )),
             const Spacer(),
             const _Copyright(),
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-@swidget
-Widget _licensesPage(BuildContext context) {
-  final theme = Theme.of(context);
-
-  const intro =
-      "Abraca Calendar is a calendar app focused on privacy enhancement.";
-
-  return Scaffold(
-    appBar: AppBar(
-      leading: const BackButton(),
-    ),
-    body: Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 30),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  backgroundColor: theme.colorScheme.primary,
-                  child: const Icon(Icons.calendar_month_outlined),
-                ),
-                const SizedBox(width: 10),
-                Text("Abraca Calender",
-                    style: TextStyle(
-                      fontSize: 24,
-                      color: theme.colorScheme.primary,
-                    )),
-              ],
-            ),
-            const SizedBox(height: 30),
-            const Text(intro,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                )),
-            const Spacer(),
             const SizedBox(height: 30),
           ],
         ),

@@ -58,7 +58,7 @@ Widget __input(
               child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             decoration: BoxDecoration(
-              color: theme.primaryColor.withOpacity(0.05),
+              color: theme.colorScheme.secondary,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Center(
@@ -184,11 +184,16 @@ Widget __itemQuickMenu(
               },
             ),
             ListTile(
-              title: const Text(
+              title: Text(
                 'Delete',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(
+                  color: theme.colorScheme.error,
+                ),
               ),
-              leading: const Icon(Icons.delete_outlined, color: Colors.red),
+              leading: Icon(
+                Icons.delete_outlined,
+                color: theme.colorScheme.error,
+              ),
               onTap: () {
                 Navigator.pop(context);
 
@@ -222,7 +227,11 @@ Widget __placeholder(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SvgPicture.asset("assets/checklist.svg"),
+              SvgPicture.asset(
+                "assets/checklist.svg",
+                width: 150,
+                height: 150,
+              ),
               const SizedBox(height: 15),
               const Text(
                 "Empty inbox",
@@ -268,8 +277,7 @@ Widget __textTask(BuildContext context, {required InboxNote note}) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 4),
     child: EventContainer(
-      backgroundColor:
-          Color.alphaBlend(theme.primaryColor.withOpacity(0.05), Colors.white),
+      backgroundColor: theme.colorScheme.secondary,
       leadingColor: Colors.transparent,
       child: Text(
         note.content,

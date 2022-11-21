@@ -140,6 +140,7 @@ Widget __calendarPanel(
       return events[Date.fromTime(day)]?.events ?? [];
     },
     startingDayOfWeek: StartingDayOfWeek.sunday,
+    rowHeight: 45.0,
     calendarStyle: CalendarStyle(
       outsideDaysVisible: true,
       defaultTextStyle: const TextStyle(fontWeight: FontWeight.bold),
@@ -149,7 +150,7 @@ Widget __calendarPanel(
           const TextStyle(fontWeight: FontWeight.bold, color: Colors.black26),
       holidayTextStyle: const TextStyle(fontWeight: FontWeight.bold),
       selectedDecoration: BoxDecoration(
-        color: theme.primaryColor,
+        color: theme.colorScheme.primary,
         shape: BoxShape.circle,
       ),
       selectedTextStyle: const TextStyle(
@@ -163,7 +164,7 @@ Widget __calendarPanel(
       todayDecoration: BoxDecoration(
         color: Colors.transparent,
         border: Border.all(
-          color: theme.primaryColor,
+          color: theme.colorScheme.primary,
           width: 2,
         ),
         shape: BoxShape.circle,
@@ -187,9 +188,9 @@ Widget __calendarPanel(
                   child: Container(
                     height: 4,
                     width: 4,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.orange,
+                      color: theme.colorScheme.tertiary,
                     ),
                   )))
               .take(4)
@@ -344,6 +345,7 @@ Widget __eventList(
             child: Chip(
               avatar: CircleAvatar(
                 backgroundColor: theme.colorScheme.primary,
+                foregroundColor: Colors.white,
                 child: Text('$eventCount'),
               ),
               label: const Text('Tasks'),
@@ -447,6 +449,8 @@ Widget __eventBox(BuildContext context, CalendarEvent event) {
     );
   }
 
+  final theme = Theme.of(context);
+
   return Material(
     type: MaterialType.card,
     child: InkWell(
@@ -468,8 +472,8 @@ Widget __eventBox(BuildContext context, CalendarEvent event) {
           children: [
             Container(
               margin: const EdgeInsets.only(top: 6),
-              decoration: const BoxDecoration(
-                color: Colors.orange,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.tertiary,
                 shape: BoxShape.circle,
               ),
               width: 12,
@@ -592,11 +596,16 @@ Widget __itemQuickMenu(
               },
             ),
             ListTile(
-              title: const Text(
+              title: Text(
                 'Delete',
-                style: TextStyle(color: Colors.red),
+                style: TextStyle(
+                  color: theme.colorScheme.error,
+                ),
               ),
-              leading: const Icon(Icons.delete_outlined, color: Colors.red),
+              leading: Icon(
+                Icons.delete_outlined,
+                color: theme.colorScheme.error,
+              ),
               onTap: () {
                 Navigator.pop(context);
 

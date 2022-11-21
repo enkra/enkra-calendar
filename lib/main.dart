@@ -9,6 +9,7 @@ import 'pages/inbox.dart';
 import 'pages/tab_page.dart';
 import 'calendar.dart';
 import 'storage.dart';
+import 'theme.dart';
 
 void main() {
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -31,20 +32,27 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brandColor = Color(0xff5046e5);
-
     return MaterialApp(
       title: 'Calandar Demo',
       theme: ThemeData.from(
         colorScheme: const ColorScheme.light().copyWith(
-          primary: brandColor,
-          onPrimary: Colors.white,
+          primary: theme.primary,
+          secondary: theme.secondary,
+          onPrimary: theme.onPrimary,
+          surface: theme.background,
+          background: theme.background,
+          error: theme.danger,
+          tertiary: theme.miscColor,
         ),
       ).copyWith(
-        appBarTheme: const AppBarTheme(
-          color: Colors.white,
+        scaffoldBackgroundColor: theme.background,
+        appBarTheme: AppBarTheme(
+          color: theme.background,
           foregroundColor: Colors.black,
           elevation: 0,
+        ),
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: theme.background,
         ),
       ),
       home: const MainPage(),
