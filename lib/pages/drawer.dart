@@ -54,7 +54,7 @@ Widget navDrawer(BuildContext context) {
             'assets/logo.png',
           ),
           const SizedBox(width: 10),
-          Text("Abraca Calendar",
+          Text("Enkra Calendar",
               style: TextStyle(
                 fontSize: 24,
                 color: theme.colorScheme.primary,
@@ -131,13 +131,13 @@ Widget __versionTag(BuildContext context) {
       builder: (context, AsyncSnapshot<PackageInfo> s) {
         final packageInfo = s.data;
 
-        var appString = "Abraca Calendar";
+        var appString = "Enkra Calendar";
 
         if (packageInfo != null) {
           final version = packageInfo.version;
           final buildNumber = packageInfo.buildNumber;
 
-          appString = "Abraca Calendar $version ($buildNumber)";
+          appString = "Enkra Calendar $version ($buildNumber)";
         }
 
         return Text(
@@ -169,7 +169,7 @@ Widget __copyright(BuildContext context) {
               style: const TextStyle(fontWeight: FontWeight.w400),
             ),
             const Text(
-              "Copyright @ Abraca Apps 2022",
+              "Copyright @ enkra.io 2022",
               style: TextStyle(fontWeight: FontWeight.w400),
             ),
           ],
@@ -182,7 +182,7 @@ Widget __aboutPage(BuildContext context) {
   final theme = Theme.of(context);
 
   const intro =
-      "Abraca Calendar is a calendar app focused on privacy enhancement.";
+      "Enkra Calendar is a calendar app focused on privacy enhancement.";
   return Scaffold(
     appBar: AppBar(
       leading: const BackButton(),
@@ -202,7 +202,7 @@ Widget __aboutPage(BuildContext context) {
                   height: 45,
                 ),
                 const SizedBox(width: 10),
-                Text("Abraca Calendar",
+                Text("Enkra Calendar",
                     style: TextStyle(
                       fontSize: 24,
                       color: theme.colorScheme.primary,
