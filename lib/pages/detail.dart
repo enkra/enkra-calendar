@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../date.dart';
 import '../calendar.dart';
 import 'editing.dart';
+import 'common.dart';
 
 part 'detail.g.dart';
 
@@ -99,34 +100,18 @@ Widget eventDetailPage(
               actions: [
                 IconButton(
                   onPressed: () {
-                    if (event.uid != null) {
-                      showDialog<String>(
-                        context: context,
-                        builder: (BuildContext context) => AlertDialog(
-                          title: const Text('Confirm'),
-                          content:
-                              const Text("Are you sure to delete this event?"),
-                          actions: <Widget>[
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, 'Cancel'),
-                              child: const Text('No'),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                // pop dialog
-                                Navigator.pop(context);
+                    showConfirmDialog(
+                      context: context,
+                      content: "Delete this event?",
+                      onOk: (context) {
+                        // pop to main page
+                        Navigator.pop(context);
 
-                                // pop to main page
-                                Navigator.pop(context);
-
-                                calendarManager.removeEvent(event.uid!);
-                              },
-                              child: const Text('Yes'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
+                        if (event.uid != null) {
+                          calendarManager.removeEvent(event.uid!);
+                        }
+                      },
+                    );
                   },
                   icon: Icon(
                     Icons.delete_outlined,

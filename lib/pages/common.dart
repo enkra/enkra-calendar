@@ -55,3 +55,31 @@ Widget eventContainer(
     ),
   );
 }
+
+void showConfirmDialog({
+  required BuildContext context,
+  required String content,
+  required void Function(BuildContext) onOk,
+}) {
+  showDialog<String>(
+    context: context,
+    builder: (BuildContext context) => AlertDialog(
+      content: Text(content),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.pop(context, 'Cancel'),
+          child: const Text('No'),
+        ),
+        TextButton(
+          onPressed: () {
+            // pop dialog
+            Navigator.pop(context);
+
+            onOk(context);
+          },
+          child: const Text('Yes'),
+        ),
+      ],
+    ),
+  );
+}

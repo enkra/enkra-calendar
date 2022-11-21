@@ -190,11 +190,18 @@ Widget __itemQuickMenu(
               ),
               leading: const Icon(Icons.delete_outlined, color: Colors.red),
               onTap: () {
-                final calendarManager =
-                    Provider.of<CalendarManager>(context, listen: false);
-
-                calendarManager.deleteNote(note.id);
                 Navigator.pop(context);
+
+                showConfirmDialog(
+                  context: context,
+                  content: "Delete this note?",
+                  onOk: (context) {
+                    final calendarManager =
+                        Provider.of<CalendarManager>(context, listen: false);
+
+                    calendarManager.deleteNote(note.id);
+                  },
+                );
               },
             )
           ],

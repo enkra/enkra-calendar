@@ -598,13 +598,20 @@ Widget __itemQuickMenu(
               ),
               leading: const Icon(Icons.delete_outlined, color: Colors.red),
               onTap: () {
-                final calendarManager =
-                    Provider.of<CalendarManager>(context, listen: false);
-
-                if (event.uid != null) {
-                  calendarManager.removeEvent(event.uid!);
-                }
                 Navigator.pop(context);
+
+                showConfirmDialog(
+                  context: context,
+                  content: "Delete this event?",
+                  onOk: (context) {
+                    final calendarManager =
+                        Provider.of<CalendarManager>(context, listen: false);
+
+                    if (event.uid != null) {
+                      calendarManager.removeEvent(event.uid!);
+                    }
+                  },
+                );
               },
             )
           ],
