@@ -16,22 +16,17 @@ Widget editingPage(
   required Date initialDay,
   CalendarEvent? eventToEdit,
 }) {
-  final now = DateTime.now();
-
-  final initialStart =
-      DateTime(initialDay.year, initialDay.month, initialDay.day, now.hour + 1);
-  final initialEnd = initialStart.add(const Duration(hours: 1));
-
   final event = useState(eventToEdit?.copy() ??
       CalendarEvent(
-        start: initialStart.toUtc(),
-        end: initialEnd.toUtc(),
+        start: DateTime.utc(initialDay.year, initialDay.month, initialDay.day),
+        end: DateTime.utc(initialDay.year, initialDay.month, initialDay.day),
+        isAllDay: true,
       ));
 
   final start = useState(event.value.localStart());
-  final end = useState(event.value.localEnd() ?? initialEnd);
+  final end = useState(event.value.localEnd() ?? event.value.localStart());
 
-  final isAllDay = useState(eventToEdit?.isAllDay ?? false);
+  final isAllDay = useState(event.value.isAllDay);
 
   final theme = Theme.of(context);
 
