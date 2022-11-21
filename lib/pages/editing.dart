@@ -1,4 +1,3 @@
-import 'package:calendar_mvp/data.dart';
 import 'package:flutter/material.dart';
 import 'package:ical/src/event.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +7,7 @@ import 'package:functional_widget_annotation/functional_widget_annotation.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
 import '../date.dart';
+import '../calendar.dart';
 
 part 'editing.g.dart';
 
@@ -15,20 +15,19 @@ part 'editing.g.dart';
 Widget editingPage(
   BuildContext context, {
   required Date initialDay,
+  IEvent? eventToEdit,
 }) {
-  final summary = useRef("");
-
   final now = DateTime.now();
 
   final initialStart =
       DateTime(initialDay.year, initialDay.month, initialDay.day, now.hour + 1);
   final initialEnd = initialStart.add(const Duration(hours: 1));
 
-  final start = useRef<DateTime>(initialStart);
-
-  final description = useRef<String?>("");
-
-  var focusNode = FocusNode();
+  final event = useRef(eventToEdit ??
+      IEvent(
+        status: IEventStatus.CONFIRMED,
+        start: initialStart,
+      ));
 
   return Scaffold(
     appBar: AppBar(
@@ -42,14 +41,15 @@ Widget editingPage(
                 final calendarManager =
                     Provider.of<CalendarManager>(context, listen: false);
 
-                calendarManager.addEvent(
-                  IEvent(
-                    status: IEventStatus.CONFIRMED,
-                    start: start.value,
-                    summary: summary.value,
-                    description: description.value,
-                  ),
-                );
+                if (event.value.uid == null) {
+                  calendarManager.createEvent(
+                    event.value,
+                  );
+                } else {
+                  calendarManager.updateEvent(
+                    event.value,
+                  );
+                }
 
                 Navigator.pop(context);
               },
@@ -69,6 +69,9 @@ Widget editingPage(
         ListTile(
           leading: const SizedBox(),
           title: TextField(
+            controller: TextEditingController(
+              text: event.value.summary,
+            ),
             decoration: const InputDecoration(
               hintText: "Add title",
               border: InputBorder.none,
@@ -82,10 +85,12 @@ Widget editingPage(
               fontSize: 26,
               fontWeight: FontWeight.bold,
             ),
-            focusNode: focusNode,
+            focusNode: FocusNode(),
             autofocus: true,
             textInputAction: TextInputAction.done,
-            onChanged: (val) => summary.value = val,
+            onChanged: (val) {
+              event.value.summary = val;
+            },
           ),
         ),
         const Divider(),
@@ -102,9 +107,9 @@ Widget editingPage(
         ListTile(
           leading: const SizedBox(),
           title: _TimePicker(
-            initialTime: initialStart,
+            initialTime: event.value.start,
             onTimePicked: (time) {
-              start.value = time;
+              event.value.start = time;
             },
           ),
         ),
@@ -127,7 +132,9 @@ Widget editingPage(
                 color: Colors.black,
               ),
             ),
-            onChanged: (val) => description.value = val,
+            onChanged: (val) {
+              event.value.description = val;
+            },
           ),
         ),
       ],

@@ -10,6 +10,7 @@ Widget eventContainer(
   Color? leadingColor,
   Color? backgroundColor,
   GestureLongPressCallback? onLongPress,
+  GestureTapCallback? onTap,
 }) {
   leadingColor = leadingColor ?? Colors.grey[200];
   backgroundColor = backgroundColor ?? Colors.grey[100];
@@ -26,7 +27,7 @@ Widget eventContainer(
       borderRadius: BorderRadius.circular(10),
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        onTap: () => {},
+        onTap: onTap,
         onLongPress: onLongPress,
         child: IntrinsicHeight(
           child: Stack(

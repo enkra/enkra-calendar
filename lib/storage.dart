@@ -136,6 +136,8 @@ class IEventsInJsonFile extends IEvents {
   Future<void> add(IEvent event) async {
     final events = await getAll();
 
+    events.removeWhere((e) => e.uid == event.uid);
+
     events.add(event);
 
     await storeAll(events);

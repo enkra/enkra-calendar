@@ -9,7 +9,7 @@ import 'package:ical/src/event.dart';
 import 'package:provider/provider.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
-import '../data.dart';
+import '../calendar.dart';
 import '../date.dart';
 import 'common.dart';
 import 'tab_page.dart';
@@ -579,6 +579,16 @@ Widget _eventBox(BuildContext context, IEvent event) {
             )),
       ],
     ),
+    onTap: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (context) => EditingPage(
+                  initialDay: Date.fromTime(DateTime.now()),
+                  eventToEdit: event,
+                )),
+      );
+    },
     onLongPress: () {
       showDialog(
           context: context,
