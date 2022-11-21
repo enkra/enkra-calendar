@@ -137,6 +137,27 @@ class CalendarManager extends ChangeNotifier {
 
     notifyListeners();
   }
+
+  createEventFromIndexNote(InboxNote note) {
+    final today = Date.fromTime(DateTime.now()).utcTime();
+
+    if (note.content.length <= 16) {
+      return CalendarEvent(
+        start: today,
+        end: today,
+        summary: note.content,
+        isAllDay: true,
+      );
+    } else {
+      return CalendarEvent(
+        start: today,
+        end: today,
+        summary: note.content.substring(0, 16),
+        description: note.content,
+        isAllDay: true,
+      );
+    }
+  }
 }
 
 class CalendarEvent {

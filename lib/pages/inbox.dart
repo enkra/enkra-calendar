@@ -123,21 +123,15 @@ Widget _textTask(BuildContext context, {required InboxNote note}) {
                     onPressed: () async {
                       Navigator.pop(context);
 
-                      var content = note.content;
-                      if (content.length > 16) {
-                        content = note.content.substring(0, 16);
-                      }
+                      final event =
+                          calendarManager.createEventFromIndexNote(note);
 
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
                             builder: (context) => EditingPage(
                                   initialDay: Date.fromTime(DateTime.now()),
-                                  eventToEdit: CalendarEvent(
-                                    start: DateTime.now(),
-                                    summary: content,
-                                    description: note.content,
-                                  ),
+                                  eventToEdit: event,
                                 )),
                       );
 
