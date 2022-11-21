@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
@@ -139,24 +140,30 @@ Widget editingPage(
           leading: const Icon(
             Icons.content_copy,
           ),
-          title: TextField(
-            controller: TextEditingController(
-              text: event.value.description,
-            ),
-            keyboardType: TextInputType.multiline,
-            textInputAction: TextInputAction.newline,
-            maxLines: null,
-            minLines: null,
-            decoration: const InputDecoration(
-              hintText: "Add description",
-              border: InputBorder.none,
-              hintStyle: TextStyle(
-                color: Colors.black,
-              ),
-            ),
-            onChanged: (val) {
-              event.value.description = val;
+          title: Shortcuts(
+            shortcuts: <LogicalKeySet, Intent>{
+              LogicalKeySet(LogicalKeyboardKey.enter):
+                  DoNothingAndStopPropagationIntent(),
             },
+            child: TextField(
+              controller: TextEditingController(
+                text: event.value.description,
+              ),
+              keyboardType: TextInputType.multiline,
+              textInputAction: TextInputAction.newline,
+              minLines: 10,
+              maxLines: null,
+              decoration: const InputDecoration(
+                hintText: "Add description",
+                border: InputBorder.none,
+                hintStyle: TextStyle(
+                  color: Colors.black,
+                ),
+              ),
+              onChanged: (val) {
+                event.value.description = val;
+              },
+            ),
           ),
         ),
       ],
