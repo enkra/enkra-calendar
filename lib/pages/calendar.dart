@@ -213,8 +213,6 @@ Widget __calendarPanel(
     },
     onPageChanged: (newFocusedDay) {
       focusedDay.value = newFocusedDay;
-
-      onDaySelected?.call(newFocusedDay);
     },
   );
 }
