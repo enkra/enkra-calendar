@@ -71,7 +71,6 @@ Widget calendar(
           vertical: 16.0,
         ),
         child: _CalendarPanel(
-            today: today,
             focusedDay: scrolledToDay.value,
             onDaySelected: (day) {
               final date = Date.fromTime(day);
@@ -107,12 +106,11 @@ Widget calendar(
 @hwidget
 Widget _calendarPanel(
   BuildContext context, {
-  required Date today,
   required Date focusedDay,
   void Function(DateTime day)? onDaySelected,
 }) {
-  final firstDay = today.substract(90);
-  final lastDay = today.add(90);
+  final firstDay = focusedDay.substract(90);
+  final lastDay = focusedDay.add(90);
 
   final theme = Theme.of(context);
 
