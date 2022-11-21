@@ -46,7 +46,7 @@ macro_rules! runtime {
         match RUNTIME.as_ref() {
             Ok(rt) => rt,
             Err(_) => {
-                return false;
+                return 1;
             }
         }
     };
@@ -127,7 +127,7 @@ fn setup_logger() {
 }
 
 #[no_mangle]
-pub extern "C" fn init(port: i64, data_dir: *const c_char) -> bool {
+pub extern "C" fn init(port: i64, data_dir: *const c_char) -> i32 {
     setup_logger();
 
     tink_aead::init();
@@ -147,7 +147,7 @@ pub extern "C" fn init(port: i64, data_dir: *const c_char) -> bool {
     }));
     rt.spawn(task);
 
-    true
+    0
 }
 
 pub extern "C" fn destory_c_string(string: *mut c_char) {
@@ -155,7 +155,7 @@ pub extern "C" fn destory_c_string(string: *mut c_char) {
 }
 
 #[no_mangle]
-pub extern "C" fn calendar_db_graphql(port: i64, ops: *const raw::c_char) -> bool {
+pub extern "C" fn calendar_db_graphql(port: i64, ops: *const raw::c_char) -> i32 {
     let ops = unsafe { CStr::from_ptr(ops) }.to_str().log_unwrap();
 
     let rt = runtime!();
@@ -176,5 +176,5 @@ pub extern "C" fn calendar_db_graphql(port: i64, ops: *const raw::c_char) -> boo
         Isolate::new(port).post(result);
     });
 
-    true
+    0
 }
