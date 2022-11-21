@@ -66,7 +66,16 @@ impl CalendarNative {
     const MASTER_KEYSET_ALIAS: &'static str = "__calendar_vault_master_key__";
 
     pub fn new<P: AsRef<Path> + Clone>(data_dir: P) -> Self {
-        let data_dir = data_dir.as_ref();
+        let mut data_dir = data_dir.as_ref().to_path_buf();
+
+        data_dir.push("data");
+
+        if !data_dir.exists() {
+            std::fs::create_dir_all(&data_dir).log_expect(&format!(
+                "Create data_dir {} failed",
+                data_dir.to_string_lossy()
+            ));
+        }
 
         // value.db is to store calendar app secrets such as sqlite db key.
         // Don't store app config preferences in it. Use a separate SecureLocalStorage
