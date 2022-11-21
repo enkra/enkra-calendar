@@ -142,6 +142,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9a8f622bcf6ff3df478e9deba3e03e4e04b300f8e6a139e192c05fa3490afc7"
 
 [[package]]
+name = "ar"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d67af77d68a931ecd5cbd8a3b5987d63a1d1d1278f7f6a60ae33db485cdebb69"
+
+[[package]]
 name = "async-trait"
 version = "0.1.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -830,6 +836,7 @@ dependencies = [
  "allo-isolate",
  "android_logger",
  "anyhow",
+ "ar",
  "base64",
  "cbindgen",
  "chrono",
@@ -852,6 +859,7 @@ dependencies = [
  "tink-aead",
  "tink-core",
  "tink-daead",
+ "tink-prf",
  "tink-proto",
  "tokio",
 ]
