@@ -35,6 +35,8 @@ use secure_local_storage::SecureLocalStorage;
 use device_kms::android::AndroidKms;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 use device_kms::fallback::EmptyKms;
+#[cfg(target_os = "ios")]
+use device_kms::ios::IosKms;
 use device_kms::DeviceKms;
 
 static RUNTIME: Lazy<io::Result<Runtime>> = Lazy::new(|| {
@@ -104,6 +106,8 @@ impl CalendarNative {
     fn build_device_kms() -> Box<dyn DeviceKms> {
         #[cfg(target_os = "android")]
         let device_kms: Box<dyn DeviceKms> = Box::new(AndroidKms::new());
+        #[cfg(target_os = "ios")]
+        let device_kms: Box<dyn DeviceKms> = Box::new(IosKms::new());
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         let device_kms: Box<dyn DeviceKms> = Box::new(EmptyKms::new());
 
