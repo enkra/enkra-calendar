@@ -337,7 +337,9 @@ mod tests {
             uid: "id1".to_owned(),
             summary: "Meeting 1".to_owned(),
             start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            end: "2022-01-02T13:00:00Z".parse().unwrap(),
             description: None,
+            is_all_day: true,
         };
 
         Event::add(&calendar_db, event1.clone()).unwrap();
@@ -346,7 +348,9 @@ mod tests {
             uid: "id2".to_owned(),
             summary: "Meeting 1".to_owned(),
             start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            end: "2022-01-02T13:00:00Z".parse().unwrap(),
             description: None,
+            is_all_day: true,
         };
 
         Event::add(&calendar_db, event2.clone()).unwrap();
@@ -355,7 +359,9 @@ mod tests {
             uid: "id3".to_owned(),
             summary: "Meeting 1".to_owned(),
             start: "2022-12-29T13:00:00Z".parse().unwrap(),
+            end: "2022-12-29T13:00:00Z".parse().unwrap(),
             description: None,
+            is_all_day: true,
         };
 
         Event::add(&calendar_db, earlier_event.clone()).unwrap();
@@ -364,7 +370,9 @@ mod tests {
             uid: "id4".to_owned(),
             summary: "Meeting 1".to_owned(),
             start: "2022-01-04T13:00:00Z".parse().unwrap(),
+            end: "2022-01-04T13:00:00Z".parse().unwrap(),
             description: None,
+            is_all_day: true,
         };
 
         Event::add(&calendar_db, later_event.clone()).unwrap();
@@ -396,7 +404,9 @@ mod tests {
                 uid: "id1".to_owned(),
                 summary: "Meeting 1".to_owned(),
                 start: "2022-01-02T13:00:00Z".parse().unwrap(),
+                end: "2022-01-02T13:00:00Z".parse().unwrap(),
                 description: None,
+                is_all_day: true,
             };
 
             Event::add(&calendar_db, v.clone()).unwrap();
@@ -418,7 +428,9 @@ mod tests {
                 uid: "id1".to_owned(),
                 summary: "Meeting 1".to_owned(),
                 start: "2022-01-02T13:00:00Z".parse().unwrap(),
+                end: "2022-01-02T13:00:00Z".parse().unwrap(),
                 description: None,
+                is_all_day: true,
             };
 
             let events = Event::fetch(
@@ -446,7 +458,9 @@ mod tests {
             uid: "id1".to_owned(),
             summary: "Meeting 1".to_owned(),
             start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            end: "2022-01-02T13:00:00Z".parse().unwrap(),
             description: None,
+            is_all_day: false,
         };
 
         Event::add(&calendar_db, event.clone()).unwrap();
@@ -465,7 +479,9 @@ mod tests {
             uid: "id1".to_owned(),
             summary: "Meeting 2".to_owned(),
             start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            end: "2022-01-02T13:00:00Z".parse().unwrap(),
             description: None,
+            is_all_day: false,
         };
 
         Event::add(&calendar_db, new_event.clone()).unwrap();
@@ -494,7 +510,9 @@ mod tests {
             uid: "id1".to_owned(),
             summary: "Meeting 1".to_owned(),
             start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            end: "2022-01-02T13:00:00Z".parse().unwrap(),
             description: None,
+            is_all_day: false,
         };
 
         Event::add(&calendar_db, event1.clone()).unwrap();
@@ -503,7 +521,9 @@ mod tests {
             uid: "id2".to_owned(),
             summary: "Meeting 2".to_owned(),
             start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            end: "2022-01-02T13:00:00Z".parse().unwrap(),
             description: None,
+            is_all_day: false,
         };
 
         Event::add(&calendar_db, event2.clone()).unwrap();
@@ -553,7 +573,9 @@ mod tests {
             uid: "id1".to_owned(),
             summary: "Meeting 1".to_owned(),
             start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            end: "2022-01-02T13:00:00Z".parse().unwrap(),
             description: None,
+            is_all_day: true,
         };
 
         Event::add(&calendar_db, event1.clone()).unwrap();
