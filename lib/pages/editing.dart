@@ -17,10 +17,12 @@ Widget editingPage(
   required Date initialDay,
   CalendarEvent? eventToEdit,
 }) {
+  final day = initialDay.startOfDay();
+
   final event = useState(eventToEdit?.copy() ??
       CalendarEvent(
-        start: DateTime.utc(initialDay.year, initialDay.month, initialDay.day),
-        end: DateTime.utc(initialDay.year, initialDay.month, initialDay.day),
+        start: day.toUtc(),
+        end: day.toUtc(),
         isAllDay: true,
       ));
 
@@ -113,7 +115,8 @@ Widget editingPage(
             activeColor: theme.primaryColor,
             value: timeRanger.value.isAllDay,
             onChanged: (isAllDay) {
-              timeRanger.value.isAllDay = isAllDay;
+              timeRanger.value.setAllDay(isAllDay);
+
               timeRanger.notifyListeners();
             },
           ),

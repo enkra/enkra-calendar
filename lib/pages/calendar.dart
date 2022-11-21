@@ -86,14 +86,18 @@ Widget calendar(
                   initialDay: selectedDay.value,
                   events: events,
                   onDaySelected: (day) {
-                    final date = Date.fromTime(day);
+                    // Calendar widget use date(utc) to represent
+                    // Naive date
+                    day = DateTime(day.year, day.month, day.day);
+
+                    final date = day.date();
 
                     selectedDay.value = date;
 
                     onDateChanged(date);
                   },
                   onCalendarScrolled: (day) {
-                    final date = Date.fromTime(day);
+                    final date = day.date();
 
                     onCalendarScrolled(date);
                   },
@@ -126,7 +130,7 @@ Widget __calendarPanel(
   required void Function(DateTime) onCalendarScrolled,
   void Function(DateTime day)? onDaySelected,
 }) {
-  final today = Date.fromTime(DateTime.now());
+  final today = Date.today();
 
   final firstDay = today.substract(365 * 2);
   final lastDay = today.add(365 * 2);
@@ -135,12 +139,12 @@ Widget __calendarPanel(
 
   final calendarFormat = useState(CalendarFormat.month);
 
-  final focusedDay = useRef(initialDay.utcTime());
-  final selectedDay = useState(initialDay.utcTime());
+  final focusedDay = useRef(initialDay.startOfDay());
+  final selectedDay = useState(initialDay.startOfDay());
 
   return TableCalendar<CalendarEvent>(
-    firstDay: firstDay.utcTime(),
-    lastDay: lastDay.utcTime(),
+    firstDay: firstDay.startOfDay(),
+    lastDay: lastDay.startOfDay(),
     focusedDay: focusedDay.value,
     availableCalendarFormats: const {
       CalendarFormat.month: 'Month',
@@ -149,7 +153,7 @@ Widget __calendarPanel(
     selectedDayPredicate: (day) => isSameDay(selectedDay.value, day),
     calendarFormat: calendarFormat.value,
     eventLoader: (day) {
-      return events[Date.fromTime(day)]?.events ?? [];
+      return events[day.date()]?.events ?? [];
     },
     startingDayOfWeek: StartingDayOfWeek.sunday,
     rowHeight: 45.0,
@@ -216,7 +220,7 @@ Widget __calendarPanel(
         titleTextFormatter: (date, locale) =>
             DateFormat.MMMM(locale).format(date)),
     onDaySelected: (DateTime newSelectedDay, DateTime newFocusedDay) {
-      if (!isSameDay(focusedDay.value, newSelectedDay)) {
+      if (!isSameDay(selectedDay.value, newSelectedDay)) {
         onDaySelected?.call(newSelectedDay);
       }
       selectedDay.value = newSelectedDay;
@@ -588,7 +592,7 @@ Widget __itemQuickMenu(
                     context,
                     MaterialPageRoute(
                         builder: (context) => EditingPage(
-                              initialDay: Date.fromTime(DateTime.now()),
+                              initialDay: Date.today(),
                               eventToEdit: event,
                             )));
               },

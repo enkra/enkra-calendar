@@ -158,7 +158,7 @@ Widget __itemQuickMenu(
                   context,
                   MaterialPageRoute(
                       builder: (context) => EditingPage(
-                            initialDay: Date.fromTime(DateTime.now()),
+                            initialDay: Date.today(),
                             eventToEdit: event,
                           )),
                 );
@@ -378,8 +378,7 @@ class Inbox extends StatelessWidget {
   }
 
   renderNotes(notes) {
-    final groupedNotes =
-        groupBy<InboxNote, Date>(notes, (n) => Date.fromTime(n.time));
+    final groupedNotes = groupBy<InboxNote, Date>(notes, (n) => n.time.date());
 
     List<Widget> noteItems = [];
     for (var d in groupedNotes.keys) {

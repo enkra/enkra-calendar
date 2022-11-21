@@ -95,12 +95,12 @@ class CalendarManager extends ChangeNotifier {
   Future<Map<Date, DateEvent>> getByDateRange(Date start, Date end) async {
     final events =
         (await _events.fetchEvent(start, end)).map((CalendarEvent e) {
-      e.start = e.start.toLocal();
+      e.start = e.start;
       return e;
     }).toList();
 
     final eventMap =
-        groupBy(events, (CalendarEvent e) => Date.fromTime(e.start))
+        groupBy(events, (CalendarEvent e) => e.start.toLocal().date())
             .map((day, events) {
       final sortedEvents = events.sortedBy((e) => e.start).toList();
       return MapEntry(day, DateEvent(events: sortedEvents));
@@ -114,9 +114,7 @@ class CalendarManager extends ChangeNotifier {
   }
 
   Date today() {
-    final time = DateTime.now();
-
-    return Date.fromTime(time);
+    return Date.today();
   }
 
   Future<List<InboxNote>> inboxNotes() async {
@@ -142,7 +140,7 @@ class CalendarManager extends ChangeNotifier {
   }
 
   createEventFromIndexNote(InboxNote note) {
-    final today = Date.fromTime(DateTime.now()).utcTime();
+    final today = this.today().startOfDay().toUtc();
 
     if (note.content.length <= 16) {
       return CalendarEvent(
@@ -201,27 +199,21 @@ class CalendarEvent {
     this.end = end?.toUtc();
   }
 
-  getDate(DateTime? time) {
-    final localTime = time?.toLocal();
-
-    if (localTime != null) {
-      final date = Date.fromTime(localTime);
-      return date.utcTime();
-    }
-
-    return null;
-  }
-
   setTimeAsAllDay(DateTime start, DateTime? end) {
+    assert(start.isLocal);
+    if (end != null) {
+      assert(end.isLocal);
+    }
     isAllDay = true;
 
-    this.start = getDate(start);
-    this.end = getDate(end);
+    this.start = start.toUtc();
+    this.end = end?.toUtc();
   }
 
   DateTime localStart() {
     if (isAllDay) {
-      return Date.fromTime(start).localTime();
+      final date = start.toLocal().date();
+      return date.startOfDay();
     } else {
       return start.toLocal();
     }
@@ -229,12 +221,13 @@ class CalendarEvent {
 
   DateTime? localEnd() {
     if (isAllDay && end != null) {
-      return Date.fromTime(end!).localTime();
-    } else if (isAllDay && end == null) {
-      final startDate = Date.fromTime(start);
-      final endDate = startDate.add(1);
+      final date = end!.toLocal().date();
 
-      return endDate.localTime();
+      return date.startOfDay();
+    } else if (isAllDay && end == null) {
+      final startDate = start.toLocal().date();
+
+      return startDate.startOfDay();
     } else {
       return end?.toLocal();
     }
@@ -245,10 +238,11 @@ class CalendarEvent {
       return true;
     }
 
-    final startDate = Date.fromTime(start);
-    final endDate = Date.fromTime(end!);
-
-    return startDate == endDate;
+    if (end!.difference(start) < const Duration(days: 1)) {
+      return true;
+    } else {
+      return false;
+    }
   }
 }
 
@@ -266,18 +260,22 @@ class EventTimeRanger {
   });
 
   setStart(DateTime start) {
+    assert(start.isLocal);
+
     if (isAllDay) {
-      setStartAllDay(start);
+      _setStartAllDay(start);
     } else {
-      setStartNormal(start);
+      _setStartNormal(start);
     }
   }
 
   setEnd(DateTime end) {
+    assert(end.isLocal);
+
     if (isAllDay) {
-      setEndAllDay(end);
+      _setEndAllDay(end);
     } else {
-      setEndNormal(end);
+      _setEndNormal(end);
     }
   }
 
@@ -285,7 +283,9 @@ class EventTimeRanger {
     this.isAllDay = isAllDay;
   }
 
-  setStartNormal(DateTime start) {
+  _setStartNormal(DateTime start) {
+    assert(start.isLocal);
+
     isAllDay = false;
 
     final newStart = start.toLocal();
@@ -301,7 +301,9 @@ class EventTimeRanger {
     end = newEnd;
   }
 
-  setEndNormal(DateTime end) {
+  _setEndNormal(DateTime end) {
+    assert(end.isLocal);
+
     isAllDay = false;
 
     var newStart = start;
@@ -317,27 +319,30 @@ class EventTimeRanger {
     this.end = newEnd;
   }
 
-  getDate(DateTime time) {
-    final localTime = time.toLocal();
-    final date = Date.fromTime(localTime);
+  _getDate(DateTime time) {
+    assert(time.isLocal);
 
-    return date.localTime();
+    return time.date().startOfDay();
   }
 
-  setStartAllDay(DateTime start) {
+  _setStartAllDay(DateTime start) {
     isAllDay = true;
 
-    this.start = getDate(start);
+    assert(start.isLocal);
+    this.start = start.date().startOfDay();
+
+    this.start = _getDate(start);
 
     if (end != null && end!.difference(this.start) < Duration.zero) {
       end = this.start;
     }
   }
 
-  setEndAllDay(DateTime end) {
+  _setEndAllDay(DateTime end) {
     isAllDay = true;
 
-    final newEnd = getDate(end);
+    assert(end.isLocal);
+    final newEnd = end.date().endOfDay();
 
     this.end = newEnd;
 
@@ -348,7 +353,7 @@ class EventTimeRanger {
 
   DateTime localStart() {
     if (isAllDay) {
-      return Date.fromTime(start).localTime();
+      return start.date().startOfDay();
     } else {
       return start.toLocal();
     }
@@ -356,12 +361,11 @@ class EventTimeRanger {
 
   DateTime? localEnd() {
     if (isAllDay && end != null) {
-      return Date.fromTime(end!).localTime();
+      return end!.date().startOfDay();
     } else if (isAllDay && end == null) {
-      final startDate = Date.fromTime(start);
-      final endDate = startDate.add(1);
+      final startDate = start.date();
 
-      return endDate.localTime();
+      return startDate.startOfDay();
     } else {
       return end?.toLocal();
     }

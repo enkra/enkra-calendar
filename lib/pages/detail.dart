@@ -124,7 +124,7 @@ Widget eventDetailPage(
                       context,
                       MaterialPageRoute(
                           builder: (context) => EditingPage(
-                                initialDay: Date.fromTime(DateTime.now()),
+                                initialDay: Date.today(),
                                 eventToEdit: event,
                               )),
                     )

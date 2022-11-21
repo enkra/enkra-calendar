@@ -9,8 +9,8 @@ import 'date.dart';
 class IEventsInDb extends IEvents {
   @override
   Future<List<CalendarEvent>> fetchEvent(Date start, Date end) async {
-    final startTime = start.localTime().toUtc();
-    final endTime = end.localEndOfDay().toUtc();
+    final startTime = start.startOfDay().toUtc();
+    final endTime = end.endOfDay().toUtc();
 
     final ops = """
      query {

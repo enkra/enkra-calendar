@@ -15,14 +15,20 @@ mixin BeforeAfter<T> on Comparable<T> {
 }
 
 class Date extends Comparable<Date> with BeforeAfter {
-  /// `date` in UTC format, without its time part.
+  /// `date` which time is noramlized to 00:00:00.
+  /// `date` is always UTC
   final DateTime _date;
 
-  Date.fromTime(DateTime time) : _date = _normalizeDate(time);
+  Date._fromTime(DateTime time) : _date = _normalizeDate(time);
 
   Date._internal(DateTime normalizedDate) : _date = normalizedDate;
 
-  /// Returns `date` in UTC format, without its time part.
+  factory Date.today() {
+    return DateTime.now().date();
+  }
+
+  /// Normalize date's time to 00:00:00.
+  /// `date` is always UTC
   static DateTime _normalizeDate(DateTime date) {
     return DateTime.utc(date.year, date.month, date.day);
   }
@@ -45,11 +51,21 @@ class Date extends Comparable<Date> with BeforeAfter {
 
   Date add(int days) {
     final time = _date.add(Duration(days: days));
+
+    assert(time.hour == 0);
+    assert(time.minute == 0);
+    assert(time.second == 0);
+
     return Date._internal(time);
   }
 
   Date substract(int days) {
     final time = _date.subtract(Duration(days: days));
+
+    assert(time.hour == 0);
+    assert(time.minute == 0);
+    assert(time.second == 0);
+
     return Date._internal(time);
   }
 
@@ -63,16 +79,29 @@ class Date extends Comparable<Date> with BeforeAfter {
     return dateFormat.format(_date);
   }
 
-  DateTime utcTime() {
-    return _date;
-  }
+  // startOfDay Datetime in local timezone
+  DateTime startOfDay() {
+    assert(_date.hour == 0);
+    assert(_date.minute == 0);
+    assert(_date.second == 0);
 
-  DateTime localTime() {
     return DateTime(_date.year, _date.month, _date.day);
   }
 
-  DateTime localEndOfDay() {
-    return DateTime(_date.year, _date.month, _date.day, 23, 59, 59);
+  // endOfDay Datetime in local timezone
+  DateTime endOfDay() {
+    assert(_date.hour == 0);
+    assert(_date.minute == 0);
+    assert(_date.second == 0);
+
+    var time = DateTime(_date.year, _date.month, _date.day);
+    time = time.add(const Duration(hours: 23, minutes: 59, seconds: 59));
+
+    assert(time.hour == 23);
+    assert(time.minute == 59);
+    assert(time.second == 59);
+
+    return time;
   }
 
   @override
@@ -89,69 +118,12 @@ class Date extends Comparable<Date> with BeforeAfter {
   int get hashCode => _date.hashCode;
 }
 
-// Sunday as first day
-class Week extends Comparable<Week> with BeforeAfter {
-  // `sunday` of this week in UTC format, without its time part.
-  final Date _sunday;
-
-  Week.fromDate(Date date) : _sunday = _findSunday(date);
-
-  Week._internal(Date sunday) : _sunday = sunday;
-
-  static _findSunday(Date date) {
-    final weekday = date.weekday;
-
-    if (weekday == DateTime.sunday) {
-      return date;
-    } else {
-      final sundayOfWeek = date.substract(weekday);
-      return sundayOfWeek;
-    }
+extension DateTimeExt on DateTime {
+  Date date() {
+    return Date._fromTime(this);
   }
 
-  Date firstDay() {
-    return _sunday;
+  bool get isLocal {
+    return !isUtc;
   }
-
-  Date lastDay() {
-    return _sunday.add(DateTime.daysPerWeek - 1);
-  }
-
-  @override
-  int compareTo(Week other) {
-    return _sunday.compareTo(other._sunday);
-  }
-
-  Week add(int weeks) {
-    final newSunday = _sunday.add(DateTime.daysPerWeek * weeks);
-    return Week._internal(newSunday);
-  }
-
-  Week substract(int weeks) {
-    final newSunday = _sunday.substract(DateTime.daysPerWeek * weeks);
-    return Week._internal(newSunday);
-  }
-
-  static List<Week> range(Week earliest, Week latest) {
-    List<Week> allWeeks = [];
-
-    var tempWeek = earliest;
-    do {
-      allWeeks.add(tempWeek);
-
-      tempWeek = tempWeek.add(1);
-    } while (tempWeek.isBefore(latest));
-
-    allWeeks.add(latest);
-
-    return allWeeks;
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is Week && isSame(other);
-  }
-
-  @override
-  int get hashCode => _sunday.hashCode;
 }
