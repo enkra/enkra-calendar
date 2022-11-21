@@ -16,7 +16,7 @@ tink-proto = "0.2.4"
 tink-daead = "0.2.4"
 anyhow = "1.0.56"
 base64 = "0.13.0"
-pickledb = "0.4.1"
+pickledb = { version = "0.5.1", default-features = false, features = ["cbor"] }
 rusqlite = { version = "0.27.0", features = ["bundled-sqlcipher-vendored-openssl"] }
 nosqlite = { git = "https://github.com/abraca-app/nosqlite", rev = "28c6ce36c3cb87e33492c5cb3e156c817d24e704" }
 serde_json = "1.0.79"
