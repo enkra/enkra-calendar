@@ -248,7 +248,7 @@ Widget __placeholder(
                 ),
               ),
               const Text(
-                "and shedule them later.",
+                "and schedule them later.",
                 style: TextStyle(
                   color: Colors.grey,
                 ),

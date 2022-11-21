@@ -310,7 +310,7 @@ Widget __eventList(
                   size: 60.0,
                 ),
                 Text(
-                  "Noting planned",
+                  "Nothing planned",
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.grey,
