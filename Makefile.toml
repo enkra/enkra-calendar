@@ -54,36 +54,38 @@ dependencies = ["android", "ios"]
 [tasks.ios]
 description = "build iOS targets"
 category = "Build"
-dependencies = ["ios-build", "ios-release", "post-ios"]
-
-[tasks.ios-build]
-condition = { platforms = ["mac"], env_true = ["DEV"] }
-description = "Build ios targets."
-category = "Build"
-command = "cargo"
-args = ["lipo"]
 dependencies = [
-    "setup-crate-type-ios",
+  "setup-crate-type-ios",
+  "ios-aarch64-release",
+  "ios-x86_64-release",
+  "post-ios",
 ]
 
-[tasks.ios-release]
-condition = { platforms = ["mac"], env_true = ["RELEASE"] }
-description = "Build ios targets."
-category = "Build"
+[tasks.ios-aarch64-release]
+private = true
 command = "cargo"
-args = ["lipo", "--release"]
-dependencies = [
-    "setup-crate-type-ios",
+args = [
+  "build",
+  "--target",
+  "aarch64-apple-ios",
+  "--release"
+]
+
+[tasks.ios-x86_64-release]
+private = true
+env = { RUSTFLAGS = "--cfg chacha20_force_soft" }
+command = "cargo"
+args = [
+  "build",
+  "--target",
+  "x86_64-apple-ios",
+  "--release"
 ]
 
 [tasks.post-ios]
 script_runner = "@duckscript"
 condition = { platforms = ["mac"] }
 script = [
-    """
-    cp ${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/target/universal/${LIB_OUT_DIR}/lib${CARGO_MAKE_CRATE_FS_NAME}.a \
-    ${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/ios/lib${CARGO_MAKE_CRATE_FS_NAME}.a
-    """,
     """
     cp ${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/native/binding.h \
     ${CARGO_MAKE_WORKSPACE_WORKING_DIRECTORY}/ios/Classes/binding.h

@@ -33,7 +33,10 @@ indexmap = { version = "1.8.1", features = ["std"] }
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.11.0"
 
-[target.'cfg(not(target_os = "android"))'.dependencies]
+[target.'cfg(target_os = "ios")'.dependencies]
+oslog= "0.2.0"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 simplelog = "0.11.2"
 
 [build-dependencies]
