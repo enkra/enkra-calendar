@@ -67,6 +67,14 @@ class Date extends Comparable<Date> with BeforeAfter {
     return _date;
   }
 
+  DateTime localTime() {
+    return DateTime(_date.year, _date.month, _date.day);
+  }
+
+  DateTime localEndOfDay() {
+    return DateTime(_date.year, _date.month, _date.day, 23, 59, 59);
+  }
+
   @override
   bool operator ==(Object other) {
     return other is Date && isSame(other);

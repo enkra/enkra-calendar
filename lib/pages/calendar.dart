@@ -61,42 +61,56 @@ Widget calendar(
 
   final selectedDay = useState<Date>(today);
 
-  return Column(
-    children: [
-      Container(
-        padding: const EdgeInsets.symmetric(
-          vertical: 16.0,
-        ),
-        child: _CalendarPanel(
-            initialDay: selectedDay.value,
-            onDaySelected: (day) {
-              final date = Date.fromTime(day);
+  final eventStartDay = selectedDay.value.substract(65);
+  final eventEndDay = selectedDay.value.add(65);
 
-              selectedDay.value = date;
+  return Consumer<CalendarManager>(builder: (context, calendarManager, child) {
+    return FutureBuilder(
+        future: calendarManager.getByDateRange(eventStartDay, eventEndDay),
+        builder: (context, AsyncSnapshot<Map<Date, DateEvent>> f) {
+          Map<Date, DateEvent> events = f.hasData ? f.data! : {};
 
-              onDateChanged(date);
-            }),
-      ),
-      Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16.0,
-        ),
-        child: const Divider(
-          height: 1,
-        ),
-      ),
-      Expanded(
-          child: _DatePanelList(
-        initialDay: selectedDay.value,
-      ))
-    ],
-  );
+          return Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16.0,
+                ),
+                child: _CalendarPanel(
+                    initialDay: selectedDay.value,
+                    events: events,
+                    onDaySelected: (day) {
+                      final date = Date.fromTime(day);
+
+                      selectedDay.value = date;
+
+                      onDateChanged(date);
+                    }),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                ),
+                child: const Divider(
+                  height: 1,
+                ),
+              ),
+              Expanded(
+                  child: _DatePanelList(
+                initialDay: selectedDay.value,
+                event: events[selectedDay.value],
+              ))
+            ],
+          );
+        });
+  });
 }
 
 @hwidget
 Widget _calendarPanel(
   BuildContext context, {
   required Date initialDay,
+  required Map<Date, DateEvent> events,
   void Function(DateTime day)? onDaySelected,
 }) {
   final today = Date.fromTime(DateTime.now());
@@ -111,119 +125,117 @@ Widget _calendarPanel(
   final focusedDay = useRef(initialDay.utcTime());
   final selectedDay = useState(initialDay.utcTime());
 
-  return Consumer<CalendarManager>(builder: (context, calendarManager, child) {
-    return TableCalendar<IEvent>(
-      firstDay: firstDay.utcTime(),
-      lastDay: lastDay.utcTime(),
-      focusedDay: focusedDay.value,
-      availableCalendarFormats: const {
-        CalendarFormat.month: 'Month',
-        CalendarFormat.week: 'Week',
-      },
-      selectedDayPredicate: (day) => isSameDay(selectedDay.value, day),
-      calendarFormat: calendarFormat.value,
-      eventLoader: (day) {
-        return calendarManager.getByDate(Date.fromTime(day)).events;
-      },
-      startingDayOfWeek: StartingDayOfWeek.sunday,
-      calendarStyle: CalendarStyle(
-        outsideDaysVisible: true,
-        defaultTextStyle: const TextStyle(fontWeight: FontWeight.bold),
-        weekendTextStyle:
-            const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
-        outsideTextStyle:
-            const TextStyle(fontWeight: FontWeight.bold, color: Colors.black26),
-        holidayTextStyle: const TextStyle(fontWeight: FontWeight.bold),
-        selectedDecoration: BoxDecoration(
+  return TableCalendar<IEvent>(
+    firstDay: firstDay.utcTime(),
+    lastDay: lastDay.utcTime(),
+    focusedDay: focusedDay.value,
+    availableCalendarFormats: const {
+      CalendarFormat.month: 'Month',
+      CalendarFormat.week: 'Week',
+    },
+    selectedDayPredicate: (day) => isSameDay(selectedDay.value, day),
+    calendarFormat: calendarFormat.value,
+    eventLoader: (day) {
+      return events[Date.fromTime(day)]?.events ?? [];
+    },
+    startingDayOfWeek: StartingDayOfWeek.sunday,
+    calendarStyle: CalendarStyle(
+      outsideDaysVisible: true,
+      defaultTextStyle: const TextStyle(fontWeight: FontWeight.bold),
+      weekendTextStyle:
+          const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
+      outsideTextStyle:
+          const TextStyle(fontWeight: FontWeight.bold, color: Colors.black26),
+      holidayTextStyle: const TextStyle(fontWeight: FontWeight.bold),
+      selectedDecoration: BoxDecoration(
+        color: theme.primaryColor,
+        shape: BoxShape.circle,
+      ),
+      selectedTextStyle: const TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
+      todayTextStyle: const TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Colors.black54,
+      ),
+      todayDecoration: BoxDecoration(
+        color: Colors.transparent,
+        border: Border.all(
           color: theme.primaryColor,
-          shape: BoxShape.circle,
+          width: 2,
         ),
-        selectedTextStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-        todayTextStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.black54,
-        ),
-        todayDecoration: BoxDecoration(
-          color: Colors.transparent,
-          border: Border.all(
-            color: theme.primaryColor,
-            width: 2,
-          ),
-          shape: BoxShape.circle,
-        ),
+        shape: BoxShape.circle,
       ),
-      daysOfWeekStyle: const DaysOfWeekStyle(
-        weekdayStyle:
-            TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
-        weekendStyle:
-            TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
-      ),
-      calendarBuilders: CalendarBuilders(
-        markerBuilder: (context, date, list) {
-          if (list.isEmpty) return Container();
+    ),
+    daysOfWeekStyle: const DaysOfWeekStyle(
+      weekdayStyle:
+          TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
+      weekendStyle:
+          TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
+    ),
+    calendarBuilders: CalendarBuilders(
+      markerBuilder: (context, date, list) {
+        if (list.isEmpty) return Container();
 
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: list
-                .map((event) => Padding(
-                    padding: const EdgeInsets.all(1),
-                    child: Container(
-                      height: 4,
-                      width: 4,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.orange,
-                      ),
-                    )))
-                .take(4)
-                .toList(),
-          );
-        },
-      ),
-      headerVisible: false,
-      headerStyle: HeaderStyle(
-          titleCentered: true,
-          titleTextFormatter: (date, locale) =>
-              DateFormat.MMMM(locale).format(date)),
-      onDaySelected: (DateTime _selectedDay, DateTime _focusedDay) {
-        if (!isSameDay(focusedDay.value, _selectedDay)) {
-          onDaySelected?.call(_selectedDay);
-        }
-        selectedDay.value = _selectedDay;
-        focusedDay.value = _focusedDay;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: list
+              .map((event) => Padding(
+                  padding: const EdgeInsets.all(1),
+                  child: Container(
+                    height: 4,
+                    width: 4,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.orange,
+                    ),
+                  )))
+              .take(4)
+              .toList(),
+        );
       },
-      onFormatChanged: (format) {
-        if (calendarFormat.value != format) {
-          calendarFormat.value = format;
-        }
-      },
-      onPageChanged: (_focusedDay) {
-        focusedDay.value = _focusedDay;
+    ),
+    headerVisible: false,
+    headerStyle: HeaderStyle(
+        titleCentered: true,
+        titleTextFormatter: (date, locale) =>
+            DateFormat.MMMM(locale).format(date)),
+    onDaySelected: (DateTime _selectedDay, DateTime _focusedDay) {
+      if (!isSameDay(focusedDay.value, _selectedDay)) {
+        onDaySelected?.call(_selectedDay);
+      }
+      selectedDay.value = _selectedDay;
+      focusedDay.value = _focusedDay;
+    },
+    onFormatChanged: (format) {
+      if (calendarFormat.value != format) {
+        calendarFormat.value = format;
+      }
+    },
+    onPageChanged: (_focusedDay) {
+      focusedDay.value = _focusedDay;
 
-        onDaySelected?.call(_focusedDay);
-      },
-    );
-  });
+      onDaySelected?.call(_focusedDay);
+    },
+  );
 }
 
 class _DatePanelList extends HookWidget {
   const _DatePanelList({
     Key? key,
-    this.initialDay,
+    required this.initialDay,
+    this.event,
   }) : super(key: key);
 
-  final Date? initialDay;
+  final Date initialDay;
+  final DateEvent? event;
 
   @override
   Widget build(BuildContext context) {
     return Consumer<CalendarManager>(
         builder: (context, calendarManager, child) {
-      final date = initialDay ?? calendarManager.today();
-
-      final events = calendarManager.getByDate(date);
+      final date = initialDay;
 
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -233,7 +245,7 @@ class _DatePanelList extends HookWidget {
             Expanded(
               child: _EventList(
                 date: date,
-                event: events,
+                event: event ?? const DateEvent(),
               ),
             )
           ],

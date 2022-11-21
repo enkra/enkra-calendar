@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import "package:collection/collection.dart";
 import 'package:flutter/foundation.dart';
 
 import 'package:ical/src/event.dart';
@@ -23,7 +24,7 @@ class DateEvent {
 }
 
 abstract class IEvents {
-  Future<List<IEvent>> getAll();
+  Future<List<IEvent>> fetchEvent(Date start, Date end);
 
   Future<void> add(IEvent event);
 
@@ -45,8 +46,6 @@ class InboxNote {
 class CalendarManager extends ChangeNotifier {
   final IEvents _events;
 
-  final List<IEvent> _cached_events = <IEvent>[];
-
   final List<InboxNote> _cached_notes = <InboxNote>[
     InboxNote(content: "Meeting with Josh"),
     InboxNote(content: "Clean room"),
@@ -66,32 +65,17 @@ class CalendarManager extends ChangeNotifier {
 
   CalendarManager(IEvents events)
       : _events = events,
-        super() {
-    _loadData();
-  }
-
-  _loadData() async {
-    _cached_events.addAll(await _events.getAll());
-
-    notifyListeners();
-  }
+        super();
 
   createEvent(IEvent event) {
     event.uid = nanoid(32);
 
     _events.add(event);
-    _cached_events.add(event);
 
     notifyListeners();
   }
 
   updateEvent(IEvent event) {
-    for (var d in _cached_events.asMap().entries) {
-      if (d.value.uid == event.uid) {
-        _cached_events[d.key] = event;
-      }
-    }
-
     _events.add(event);
 
     notifyListeners();
@@ -99,26 +83,17 @@ class CalendarManager extends ChangeNotifier {
 
   removeEvent(String uid) {
     _events.remove(uid);
-    _cached_events.removeWhere((e) => e.uid == uid);
 
     notifyListeners();
   }
 
-  DateEvent getByDate(Date date) {
-    final events =
-        _cached_events.where((event) => date.isSameDay(event.start)).toList();
+  Future<Map<Date, DateEvent>> getByDateRange(Date start, Date end) async {
+    final events = await _events.fetchEvent(start, end);
 
-    return DateEvent(events: events);
-  }
+    final eventMap = groupBy(events, (IEvent e) => Date.fromTime(e.start))
+        .map((day, events) => MapEntry(day, DateEvent(events: events)));
 
-  List<Date> eventDays() {
-    final days = _cached_events
-        .map((event) => event.start)
-        .map((time) => Date.fromTime(time))
-        .toSet()
-        .toList();
-
-    return days;
+    return eventMap;
   }
 
   bool isToday(Date date) {

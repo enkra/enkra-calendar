@@ -1,104 +1,28 @@
-import 'dart:io';
 import 'dart:convert';
 
 import 'package:ical/src/event.dart';
-import 'package:nanoid/nanoid.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'calendar.dart';
-
-class IEventsInMemory extends IEvents {
-  @override
-  Future<List<IEvent>> getAll() async {
-    final today = DateTime.now();
-
-    final yestoday = today.subtract(const Duration(days: 1));
-    final tomorrow = today.add(const Duration(days: 1));
-
-    return [
-      IEvent(
-        uid: nanoid(32),
-        status: IEventStatus.CONFIRMED,
-        start: yestoday,
-        summary: 'Skype with Selina',
-      ),
-      IEvent(
-        uid: nanoid(32),
-        status: IEventStatus.CONFIRMED,
-        start: yestoday,
-        summary: 'Lunch with Client',
-      ),
-      IEvent(
-        uid: nanoid(32),
-        status: IEventStatus.CONFIRMED,
-        start: today,
-        summary: 'Fitness',
-      ),
-      IEvent(
-        uid: nanoid(32),
-        status: IEventStatus.CONFIRMED,
-        start: today,
-        summary: 'Dentist Appointment',
-      ),
-      IEvent(
-        uid: nanoid(32),
-        status: IEventStatus.CONFIRMED,
-        start: today,
-        summary: 'Lunch time',
-      ),
-      IEvent(
-        uid: nanoid(32),
-        status: IEventStatus.CONFIRMED,
-        start: tomorrow,
-        summary: 'Fitness',
-      ),
-      IEvent(
-        uid: nanoid(32),
-        status: IEventStatus.CONFIRMED,
-        start: tomorrow,
-        summary: 'Dentist Appointment',
-      ),
-      IEvent(
-        uid: nanoid(32),
-        status: IEventStatus.CONFIRMED,
-        start: tomorrow,
-        summary: 'Lunch time',
-      ),
-    ];
-  }
-
-  @override
-  add(IEvent event) async {}
-
-  @override
-  remove(String uid) async {}
-}
+import 'native.dart';
+import 'date.dart';
 
 class IEventsInJsonFile extends IEvents {
-  Future<String> get _localPath async {
-    final directory = await getApplicationSupportDirectory();
+  final Future<void> _setup;
 
-    return directory.path;
-  }
-
-  Future<File> get _localFile async {
-    final path = await _localPath;
-
-    final file = File('$path/events.json');
-
-    if (!await file.exists()) {
-      await file.create();
-    }
-    return file;
-  }
+  IEventsInJsonFile() : _setup = CalendarNative.setup();
 
   @override
-  Future<List<IEvent>> getAll() async {
-    try {
-      final file = await _localFile;
+  Future<List<IEvent>> fetchEvent(Date start, Date end) async {
+    await _setup;
 
-      // Read the file
-      final contents = await file.readAsString();
+    final startTime = start.localTime().toUtc();
+    final endTime = end.localEndOfDay().toUtc();
+
+    try {
+      final contents = await CalendarNative.fetchEvent(
+        startTime.toIso8601String(),
+        endTime.toIso8601String(),
+      );
 
       List<dynamic> events = jsonDecode(contents);
 
@@ -111,44 +35,29 @@ class IEventsInJsonFile extends IEvents {
               ))
           .toList();
     } catch (e) {
-      // If encountering an error, return 0
+      // If encountering an error, return empty list
       return [];
     }
   }
 
-  storeAll(List<IEvent> events) async {
-    final file = await _localFile;
-
-    final data = events
-        .map((e) => {
-              "uid": e.uid,
-              "summary": e.summary,
-              "start": e.start.toString(),
-              "description": e.description,
-            })
-        .toList();
-
-    // Write the file
-    await file.writeAsString(jsonEncode(data));
-  }
-
   @override
   Future<void> add(IEvent event) async {
-    final events = await getAll();
+    await _setup;
 
-    events.removeWhere((e) => e.uid == event.uid);
+    final e = {
+      "uid": event.uid,
+      "summary": event.summary,
+      "start": event.start.toString(),
+      "description": event.description,
+    };
 
-    events.add(event);
-
-    await storeAll(events);
+    await CalendarNative.addEvent(jsonEncode(e));
   }
 
   @override
   Future<void> remove(uid) async {
-    final events = await getAll();
+    await _setup;
 
-    events.removeWhere((e) => e.uid == uid);
-
-    await storeAll(events);
+    await CalendarNative.deleteEvent(uid);
   }
 }
