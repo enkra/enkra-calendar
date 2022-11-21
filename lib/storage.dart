@@ -37,12 +37,14 @@ class IEventsInDb extends IEvents {
 
   @override
   Future<void> add(IEvent event) async {
+    final summary = event.summary?.replaceAll("\"", "\\\"");
+
     final ops = """
      mutation {
        addEvent(
          event: {
            uid: "${event.uid}",
-           summary: "${event.summary}",
+           summary: "$summary",
            start: "${event.start.toUtc().toIso8601String()}",
          }
        ) {
@@ -95,13 +97,15 @@ class InboxNotesInDb extends InboxNotes {
 
   @override
   Future<void> add(InboxNote note) async {
+    final content = note.content.replaceAll("\"", "\\\"");
+
     final ops = """
      mutation {
        addInboxNote(
          note: {
            id: "${note.id}",
            time: "${note.time.toUtc().toIso8601String()}",
-           content: "${note.content}",
+           content: "$content",
          }
        ) {
            id

@@ -165,7 +165,7 @@ pub extern "C" fn calendar_db_graphql(port: i64, ops: *const raw::c_char) -> i32
             .secure_calendar_db
             .query(ops)
             .map_err(|e| {
-                error!("{}", e);
+                error!("graphql error {}", e);
             })
             .map(|(value, _)| {
                 let result = serde_json::to_string(&value).log_unwrap();
