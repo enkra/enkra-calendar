@@ -94,7 +94,10 @@ class CalendarManager extends ChangeNotifier {
     }).toList();
 
     final eventMap = groupBy(events, (IEvent e) => Date.fromTime(e.start))
-        .map((day, events) => MapEntry(day, DateEvent(events: events)));
+        .map((day, events) {
+      final sortedEvents = events.sortedBy((e) => e.start).toList();
+      return MapEntry(day, DateEvent(events: sortedEvents));
+    });
 
     return eventMap;
   }
@@ -110,10 +113,13 @@ class CalendarManager extends ChangeNotifier {
   }
 
   Future<List<InboxNote>> inboxNotes() async {
-    return (await _inboxNotes.fetch()).map((n) {
-      n.time = n.time.toLocal();
-      return n;
-    }).toList();
+    return (await _inboxNotes.fetch())
+        .map((n) {
+          n.time = n.time.toLocal();
+          return n;
+        })
+        .sortedBy((n) => n.time)
+        .toList();
   }
 
   addNote(InboxNote note) {
