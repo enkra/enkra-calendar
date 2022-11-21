@@ -35,13 +35,18 @@ class CalendarNative {
     return directory.path;
   }
 
-  static Future<Map<String, dynamic>> queryCalendarDb(String ops) async {
+  static Future<Map<String, dynamic>> queryCalendarDb(
+      String ops, String? variables) async {
     await ensureSetup();
 
     final completer = Completer<String>();
     final sendPort = singleCompletePort(completer);
 
-    native.calendar_db_graphql(sendPort.nativePort, ops.toNativeUtf8());
+    final Pointer<Never> nullptr = Pointer.fromAddress(0);
+
+    final vars = variables?.toNativeUtf8() ?? nullptr;
+
+    native.calendar_db_graphql(sendPort.nativePort, ops.toNativeUtf8(), vars);
 
     final content = await completer.future;
 

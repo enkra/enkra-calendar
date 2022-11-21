@@ -66,12 +66,17 @@ impl CalendarDb {
     pub fn query(
         &self,
         ops: &str,
+        variables: Option<&str>,
     ) -> Result<(juniper::Value, Vec<ExecutionError<DefaultScalarValue>>)> {
+        let variables: Variables = variables
+            .map(|v| serde_json::from_str(v).log_unwrap())
+            .unwrap_or_else(|| Variables::new());
+
         juniper::execute_sync(
             ops,
             None,
             &Schema::new(Query, Mutation, EmptySubscription::new()),
-            &Variables::new(),
+            &variables,
             &self,
         )
         .map_err(|e| anyhow!("{}", e.to_string()))

@@ -219,7 +219,7 @@ Widget _input(
             ),
             color: theme.colorScheme.primary,
             onPressed: () {
-              final content = controller.text.replaceAll('\n', "\\n");
+              final content = controller.text;
 
               if (content == "") {
                 return;

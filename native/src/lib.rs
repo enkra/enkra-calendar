@@ -8,6 +8,7 @@ use std::{
     io,
     os::raw::{self, c_char},
     path::Path,
+    ptr::NonNull,
 };
 use tokio::runtime::{Builder, Runtime};
 
@@ -155,15 +156,21 @@ pub extern "C" fn destory_c_string(string: *mut c_char) {
 }
 
 #[no_mangle]
-pub extern "C" fn calendar_db_graphql(port: i64, ops: *const raw::c_char) -> i32 {
+pub extern "C" fn calendar_db_graphql(
+    port: i64,
+    ops: *const raw::c_char,
+    variables: Option<NonNull<raw::c_char>>,
+) -> i32 {
     let ops = unsafe { CStr::from_ptr(ops) }.to_str().log_unwrap();
+
+    let variables = variables.map(|v| unsafe { CStr::from_ptr(v.as_ptr()) }.to_str().log_unwrap());
 
     let rt = runtime!();
 
     rt.spawn(async move {
         let result = calendar_native()
             .secure_calendar_db
-            .query(ops)
+            .query(ops, variables)
             .map_err(|e| {
                 error!("graphql error {}", e);
             })

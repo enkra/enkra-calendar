@@ -23,7 +23,7 @@ class IEventsInDb extends IEvents {
      """;
 
     List<dynamic> events =
-        (await CalendarNative.queryCalendarDb(ops))['fetchEvent']!;
+        (await CalendarNative.queryCalendarDb(ops, null))['fetchEvent']!;
 
     return events
         .map((e) => IEvent(
@@ -37,14 +37,12 @@ class IEventsInDb extends IEvents {
 
   @override
   Future<void> add(IEvent event) async {
-    final summary = event.summary?.replaceAll("\"", "\\\"");
-
     final ops = """
-     mutation {
+     mutation AddEvent(\$summary: String!){
        addEvent(
          event: {
            uid: "${event.uid}",
-           summary: "$summary",
+           summary: \$summary,
            start: "${event.start.toUtc().toIso8601String()}",
          }
        ) {
@@ -55,7 +53,9 @@ class IEventsInDb extends IEvents {
      }
      """;
 
-    await CalendarNative.queryCalendarDb(ops);
+    final vars = jsonEncode({"summary": event.summary});
+
+    await CalendarNative.queryCalendarDb(ops, vars);
   }
 
   @override
@@ -66,7 +66,7 @@ class IEventsInDb extends IEvents {
      }
      """;
 
-    await CalendarNative.queryCalendarDb(ops);
+    await CalendarNative.queryCalendarDb(ops, null);
   }
 }
 
@@ -84,7 +84,7 @@ class InboxNotesInDb extends InboxNotes {
      """;
 
     List<dynamic> notes =
-        (await CalendarNative.queryCalendarDb(ops))['fetchInboxNote']!;
+        (await CalendarNative.queryCalendarDb(ops, null))['fetchInboxNote']!;
 
     return notes
         .map((n) => InboxNote.build(
@@ -97,15 +97,13 @@ class InboxNotesInDb extends InboxNotes {
 
   @override
   Future<void> add(InboxNote note) async {
-    final content = note.content.replaceAll("\"", "\\\"");
-
     final ops = """
-     mutation {
+     mutation AddInboxNote(\$content: String!){
        addInboxNote(
          note: {
            id: "${note.id}",
            time: "${note.time.toUtc().toIso8601String()}",
-           content: "$content",
+           content: \$content,
          }
        ) {
            id
@@ -113,7 +111,9 @@ class InboxNotesInDb extends InboxNotes {
      }
      """;
 
-    await CalendarNative.queryCalendarDb(ops);
+    final vars = jsonEncode({"content": note.content});
+
+    await CalendarNative.queryCalendarDb(ops, vars);
   }
 
   @override
@@ -124,6 +124,6 @@ class InboxNotesInDb extends InboxNotes {
      }
      """;
 
-    await CalendarNative.queryCalendarDb(ops);
+    await CalendarNative.queryCalendarDb(ops, null);
   }
 }
