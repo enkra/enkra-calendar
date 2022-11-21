@@ -51,7 +51,7 @@ Widget navDrawer(BuildContext context) {
       child: Row(
         children: [
           Image.asset(
-            'assets/logo.png',
+            'assets/rounded-logo.png',
           ),
           const SizedBox(width: 10),
           Text("Enkra Calendar",
@@ -198,7 +198,7 @@ Widget __aboutPage(BuildContext context) {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Image.asset(
-                  'assets/logo.png',
+                  'assets/rounded-logo.png',
                   height: 45,
                 ),
                 const SizedBox(width: 10),
