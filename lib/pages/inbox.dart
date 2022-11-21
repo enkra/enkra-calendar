@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:functional_widget_annotation/functional_widget_annotation.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:ical/serializer.dart';
 import 'package:provider/provider.dart';
 import "package:collection/collection.dart";
@@ -33,6 +32,12 @@ Widget buildInboxPage(
 
 @swidget
 Widget inbox(BuildContext context) {
+  final scrollController = ScrollController();
+
+  WidgetsBinding.instance?.addPostFrameCallback((_) {
+    scrollController.jumpTo(scrollController.position.maxScrollExtent);
+  });
+
   return Column(children: [
     Expanded(
       child:
@@ -51,17 +56,29 @@ Widget inbox(BuildContext context) {
           noteItems.addAll(notes);
         }
 
-        return ListView(
+        return ListView.builder(
           padding: const EdgeInsets.only(
             left: 32,
             right: 32,
             top: 16,
           ),
-          children: noteItems,
+          itemCount: noteItems.length,
+          itemBuilder: (context, index) {
+            return noteItems[index];
+          },
+          controller: scrollController,
         );
       }),
     ),
-    const _Input(),
+    _Input(
+      onNoteCreated: (_) {
+        scrollController.animateTo(
+          scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      },
+    ),
   ]);
 }
 
@@ -141,7 +158,10 @@ Widget _textTask(BuildContext context, {required InboxNote note}) {
 }
 
 @swidget
-Widget _input(BuildContext context) {
+Widget _input(
+  BuildContext context, {
+  ValueChanged<String>? onNoteCreated,
+}) {
   final theme = Theme.of(context);
 
   final controller = TextEditingController();
@@ -177,6 +197,8 @@ Widget _input(BuildContext context) {
                     calendarManager.addNote(InboxNote(content: val));
 
                     controller.clear();
+
+                    onNoteCreated?.call(val);
                   },
                 ),
               ),
