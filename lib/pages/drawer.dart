@@ -97,10 +97,10 @@ Widget navDrawer(BuildContext context) {
                     },
                   ),
                   ListTile(
-                    title: Text(
+                    title: const Text(
                       "Licenses",
                     ),
-                    leading: SizedBox.square(
+                    leading: const SizedBox.square(
                       dimension: 40,
                       child: Icon(
                         Icons.source_rounded,
@@ -111,7 +111,7 @@ Widget navDrawer(BuildContext context) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => OssLicensesPage()),
+                            builder: (context) => const OssLicensesPage()),
                       );
                     },
                   ),
@@ -126,7 +126,7 @@ Widget navDrawer(BuildContext context) {
 }
 
 @swidget
-Widget _versionTag(BuildContext context) {
+Widget __versionTag(BuildContext context) {
   return FutureBuilder(
       future: PackageInfo.fromPlatform(),
       builder: (context, AsyncSnapshot<PackageInfo> s) {
@@ -149,7 +149,7 @@ Widget _versionTag(BuildContext context) {
 }
 
 @swidget
-Widget _copyright(BuildContext context) {
+Widget __copyright(BuildContext context) {
   return FutureBuilder(
       future: PackageInfo.fromPlatform(),
       builder: (context, AsyncSnapshot<PackageInfo> s) {
@@ -179,7 +179,7 @@ Widget _copyright(BuildContext context) {
 }
 
 @swidget
-Widget _aboutPage(BuildContext context) {
+Widget __aboutPage(BuildContext context) {
   final theme = Theme.of(context);
 
   const intro =

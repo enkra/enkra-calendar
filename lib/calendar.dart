@@ -3,9 +3,6 @@ import 'dart:async';
 import "package:collection/collection.dart";
 import 'package:flutter/foundation.dart';
 
-import 'package:ical/src/event.dart';
-import 'package:ical/src/abstract.dart';
-import 'package:ical/src/subcomponents.dart';
 import 'package:nanoid/nanoid.dart';
 
 import 'date.dart';

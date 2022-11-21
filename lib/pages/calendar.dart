@@ -4,9 +4,7 @@ import 'package:functional_widget_annotation/functional_widget_annotation.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:ical/src/event.dart';
 import 'package:provider/provider.dart';
-import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 
 import '../calendar.dart';
 import '../date.dart';
@@ -107,7 +105,7 @@ Widget calendar(
 }
 
 @hwidget
-Widget _calendarPanel(
+Widget __calendarPanel(
   BuildContext context, {
   required Date initialDay,
   required Map<Date, DateEvent> events,
@@ -201,22 +199,22 @@ Widget _calendarPanel(
         titleCentered: true,
         titleTextFormatter: (date, locale) =>
             DateFormat.MMMM(locale).format(date)),
-    onDaySelected: (DateTime _selectedDay, DateTime _focusedDay) {
-      if (!isSameDay(focusedDay.value, _selectedDay)) {
-        onDaySelected?.call(_selectedDay);
+    onDaySelected: (DateTime newSelectedDay, DateTime newFocusedDay) {
+      if (!isSameDay(focusedDay.value, newSelectedDay)) {
+        onDaySelected?.call(newSelectedDay);
       }
-      selectedDay.value = _selectedDay;
-      focusedDay.value = _focusedDay;
+      selectedDay.value = newSelectedDay;
+      focusedDay.value = newFocusedDay;
     },
     onFormatChanged: (format) {
       if (calendarFormat.value != format) {
         calendarFormat.value = format;
       }
     },
-    onPageChanged: (_focusedDay) {
-      focusedDay.value = _focusedDay;
+    onPageChanged: (newFocusedDay) {
+      focusedDay.value = newFocusedDay;
 
-      onDaySelected?.call(_focusedDay);
+      onDaySelected?.call(newFocusedDay);
     },
   );
 }
@@ -256,7 +254,7 @@ class _DatePanelList extends HookWidget {
 }
 
 @swidget
-Widget _eventList(
+Widget __eventList(
   BuildContext context, {
   required Date date,
   required DateEvent event,
@@ -365,7 +363,7 @@ Widget _eventList(
 }
 
 @swidget
-Widget _dateInfo(
+Widget __dateInfo(
   BuildContext context, {
   String? holiday,
   List<String>? birthdays,
@@ -436,7 +434,7 @@ Widget _dateInfo(
 }
 
 @swidget
-Widget _eventBox(BuildContext context, CalendarEvent event) {
+Widget __eventBox(BuildContext context, CalendarEvent event) {
   final time = TimeOfDay.fromDateTime(event.localStart()).format(context);
 
   return Material(
@@ -517,7 +515,7 @@ Widget _eventBox(BuildContext context, CalendarEvent event) {
 }
 
 @swidget
-Widget _dateMonthIndicator(BuildContext context, {required Date date}) {
+Widget __dateMonthIndicator(BuildContext context, {required Date date}) {
   return SizedBox(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.center,

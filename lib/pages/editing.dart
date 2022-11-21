@@ -112,8 +112,8 @@ Widget editingPage(
           trailing: Switch(
             activeColor: theme.primaryColor,
             value: timeRanger.value.isAllDay,
-            onChanged: (_isAllDay) {
-              timeRanger.value.isAllDay = _isAllDay;
+            onChanged: (isAllDay) {
+              timeRanger.value.isAllDay = isAllDay;
               timeRanger.notifyListeners();
             },
           ),
@@ -179,7 +179,7 @@ Widget editingPage(
 }
 
 @hwidget
-Widget _timePicker(
+Widget __timePicker(
   BuildContext context, {
   required DateTime initialTime,
   void Function(DateTime)? onTimePicked,
@@ -223,24 +223,24 @@ Widget _timePicker(
       InkWell(
         child: Text(timeOfDay.format(context)),
         onTap: () async {
-          final _time = await showTimePicker(
+          final newTime = await showTimePicker(
             initialTime: timeOfDay,
             context: context,
           );
 
-          if (_time == null) {
+          if (newTime == null) {
             return;
           }
 
-          final newTime = DateTime(
+          final result = DateTime(
             time.year,
             time.month,
             time.day,
-            _time.hour,
-            _time.minute,
+            newTime.hour,
+            newTime.minute,
           );
 
-          onTimePicked?.call(newTime);
+          onTimePicked?.call(result);
         },
       ),
     );

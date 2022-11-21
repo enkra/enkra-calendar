@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:functional_widget_annotation/functional_widget_annotation.dart';
-import 'package:ical/serializer.dart';
 import 'package:provider/provider.dart';
 import "package:collection/collection.dart";
 import 'package:intl/intl.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 
 import 'common.dart';
 import 'tab_page.dart';
@@ -35,7 +33,7 @@ Widget buildInboxPage(
 Widget inbox(BuildContext context) {
   final scrollController = ScrollController();
 
-  WidgetsBinding.instance?.addPostFrameCallback((_) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
     scrollController.jumpTo(scrollController.position.maxScrollExtent);
   });
 
@@ -89,7 +87,7 @@ Widget inbox(BuildContext context) {
 }
 
 @swidget
-Widget _textTask(BuildContext context, {required InboxNote note}) {
+Widget __textTask(BuildContext context, {required InboxNote note}) {
   final theme = Theme.of(context);
 
   return Padding(
@@ -157,7 +155,7 @@ Widget _textTask(BuildContext context, {required InboxNote note}) {
 }
 
 @swidget
-Widget _input(
+Widget __input(
   BuildContext context, {
   ValueChanged<String>? onNoteCreated,
 }) {
@@ -234,7 +232,7 @@ Widget _input(
 }
 
 @swidget
-Widget _time(BuildContext context, {required Date date}) {
+Widget __time(BuildContext context, {required Date date}) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 4),
     child: Center(

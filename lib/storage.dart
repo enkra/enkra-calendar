@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:ical/src/event.dart';
 
 import 'calendar.dart';
 import 'native.dart';
@@ -14,7 +13,7 @@ class IEventsInDb extends IEvents {
 
     final ops = """
      query {
-       fetchEvent(start: "${startTime}", end: "${endTime}") {
+       fetchEvent(start: "$startTime", end: "$endTime") {
            uid
            start
            end
@@ -85,7 +84,7 @@ class IEventsInDb extends IEvents {
 class InboxNotesInDb extends InboxNotes {
   @override
   Future<List<InboxNote>> fetch() async {
-    final ops = """
+    const ops = """
      query {
        fetchInboxNote {
            id
