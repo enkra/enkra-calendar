@@ -72,6 +72,7 @@ class MainPage extends HookWidget {
 
     final today = calendarManager.today();
     final calendarSelectedDay = useState(today);
+    final calendarPageDay = useState(today);
 
     switch (pageIndex.value) {
       case PageIndex.calendar:
@@ -79,6 +80,7 @@ class MainPage extends HookWidget {
           context,
           pageIndex: pageIndex,
           calendarSelectedDay: calendarSelectedDay,
+          calendarPageDay: calendarPageDay,
         );
 
       case PageIndex.inbox:

@@ -21,6 +21,7 @@ Widget buildCalendarPage(
   BuildContext context, {
   required ValueNotifier<PageIndex> pageIndex,
   required ValueNotifier<Date> calendarSelectedDay,
+  required ValueNotifier<Date> calendarPageDay,
 }) {
   final theme = Theme.of(context);
 
@@ -28,9 +29,12 @@ Widget buildCalendarPage(
     tabIndex: pageIndex.value.index,
     body: Calendar(
       onDateChanged: (day) => calendarSelectedDay.value = day,
+      onCalendarScrolled: (day) {
+        calendarPageDay.value = day;
+      },
     ),
     appBar: AppBar(
-      title: Text(calendarSelectedDay.value.format(DateFormat.MMMM())),
+      title: Text(calendarPageDay.value.format(DateFormat.MMMM())),
     ),
     floatingActionButton: FloatingActionButton(
       onPressed: () {
@@ -55,6 +59,7 @@ Widget buildCalendarPage(
 Widget calendar(
   BuildContext context, {
   required void Function(Date) onDateChanged,
+  required void Function(Date) onCalendarScrolled,
 }) {
   final calendarManager = Provider.of<CalendarManager>(context, listen: false);
 
@@ -78,15 +83,21 @@ Widget calendar(
                   vertical: 16.0,
                 ),
                 child: _CalendarPanel(
-                    initialDay: selectedDay.value,
-                    events: events,
-                    onDaySelected: (day) {
-                      final date = Date.fromTime(day);
+                  initialDay: selectedDay.value,
+                  events: events,
+                  onDaySelected: (day) {
+                    final date = Date.fromTime(day);
 
-                      selectedDay.value = date;
+                    selectedDay.value = date;
 
-                      onDateChanged(date);
-                    }),
+                    onDateChanged(date);
+                  },
+                  onCalendarScrolled: (day) {
+                    final date = Date.fromTime(day);
+
+                    onCalendarScrolled(date);
+                  },
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -112,6 +123,7 @@ Widget __calendarPanel(
   BuildContext context, {
   required Date initialDay,
   required Map<Date, DateEvent> events,
+  required void Function(DateTime) onCalendarScrolled,
   void Function(DateTime day)? onDaySelected,
 }) {
   final today = Date.fromTime(DateTime.now());
@@ -217,6 +229,7 @@ Widget __calendarPanel(
     },
     onPageChanged: (newFocusedDay) {
       focusedDay.value = newFocusedDay;
+      onCalendarScrolled(newFocusedDay);
     },
   );
 }
