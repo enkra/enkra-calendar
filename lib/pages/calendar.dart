@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:provider/provider.dart';
+import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 
 import '../calendar.dart';
 import '../date.dart';
@@ -12,6 +13,7 @@ import 'common.dart';
 import 'tab_page.dart';
 import 'editing.dart';
 import 'detail.dart';
+import 'util.dart';
 
 part 'calendar.g.dart';
 
@@ -436,10 +438,29 @@ Widget __dateInfo(
 Widget __eventBox(BuildContext context, CalendarEvent event) {
   final time = TimeOfDay.fromDateTime(event.localStart()).format(context);
 
+  onLongPress() {
+    showMaterialModalBottomSheet(
+      expand: false,
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _ItemQuickMenu(event: event),
+    );
+  }
+
   return Material(
     type: MaterialType.card,
     child: InkWell(
       borderRadius: BorderRadius.circular(10),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => EventDetailPage(
+                    event: event,
+                  )),
+        );
+      },
+      onLongPress: onLongPress,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         child: Row(
@@ -476,52 +497,6 @@ Widget __eventBox(BuildContext context, CalendarEvent event) {
           ],
         ),
       ),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-              builder: (context) => EventDetailPage(
-                    event: event,
-                  )),
-        );
-      },
-      onLongPress: () {
-        showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              final calendarManager =
-                  Provider.of<CalendarManager>(context, listen: false);
-
-              final leadDialog = SimpleDialog(
-                children: <Widget>[
-                  SimpleDialogOption(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => EditingPage(
-                                  initialDay: Date.fromTime(DateTime.now()),
-                                  eventToEdit: event,
-                                )),
-                      );
-                    },
-                    child: const Text('Edit'),
-                  ),
-                  SimpleDialogOption(
-                    onPressed: () {
-                      if (event.uid != null) {
-                        calendarManager.removeEvent(event.uid!);
-                      }
-                      Navigator.pop(context);
-                    },
-                    child: const Text('Delete'),
-                  ),
-                ],
-              );
-              return leadDialog;
-            });
-      },
     ),
   );
 }
@@ -551,4 +526,88 @@ Widget __dateMonthIndicator(BuildContext context, {required Date date}) {
       ],
     ),
   );
+}
+
+@swidget
+Widget __itemQuickMenu(
+  BuildContext context, {
+  required CalendarEvent event,
+}) {
+  final theme = Theme.of(context);
+
+  return Material(
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(20),
+        topRight: Radius.circular(20),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const SizedBox(height: 5),
+            Container(
+              width: 30,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: const BorderRadius.all(
+                  Radius.circular(2),
+                ),
+              ),
+            ),
+            ListTile(
+              title: Text(
+                'Edit',
+                style: TextStyle(color: theme.colorScheme.primary),
+              ),
+              leading: Icon(
+                Icons.edit_outlined,
+                color: theme.colorScheme.primary,
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => EditingPage(
+                              initialDay: Date.fromTime(DateTime.now()),
+                              eventToEdit: event,
+                            )));
+              },
+            ),
+            ListTile(
+              title: Text(
+                'Copy',
+                style: TextStyle(color: theme.colorScheme.primary),
+              ),
+              leading: Icon(
+                Icons.content_copy_outlined,
+                color: theme.colorScheme.primary,
+              ),
+              onTap: () {
+                Navigator.pop(context);
+
+                copyToClipboardAutoClear(event.summary);
+              },
+            ),
+            ListTile(
+              title: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+              leading: const Icon(Icons.delete_outlined, color: Colors.red),
+              onTap: () {
+                final calendarManager =
+                    Provider.of<CalendarManager>(context, listen: false);
+
+                if (event.uid != null) {
+                  calendarManager.removeEvent(event.uid!);
+                }
+                Navigator.pop(context);
+              },
+            )
+          ],
+        ),
+      ));
 }
