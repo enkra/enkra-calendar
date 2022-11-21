@@ -422,7 +422,7 @@ Widget _dateInfo(
 
 @swidget
 Widget _eventBox(BuildContext context, IEvent event) {
-  final time = TimeOfDay.fromDateTime(event.start).format(context);
+  final time = TimeOfDay.fromDateTime(event.start.toLocal()).format(context);
 
   return Material(
     type: MaterialType.card,

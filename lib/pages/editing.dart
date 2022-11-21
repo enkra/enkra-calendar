@@ -107,9 +107,9 @@ Widget editingPage(
         ListTile(
           leading: const SizedBox(),
           title: _TimePicker(
-            initialTime: event.value.start,
+            initialTime: event.value.start.toLocal(),
             onTimePicked: (time) {
-              event.value.start = time;
+              event.value.start = time.toUtc();
             },
           ),
         ),

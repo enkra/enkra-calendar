@@ -8,7 +8,6 @@ use std::{
     io,
     os::raw::{self, c_char},
     path::Path,
-    sync::Mutex,
 };
 use tokio::runtime::{Builder, Runtime};
 
@@ -101,9 +100,9 @@ impl CalendarNative {
     }
 }
 
-static CALENDAR_NATIVE: OnceCell<Mutex<CalendarNative>> = OnceCell::new();
+static CALENDAR_NATIVE: OnceCell<CalendarNative> = OnceCell::new();
 
-fn calendar_native() -> &'static Mutex<CalendarNative> {
+fn calendar_native() -> &'static CalendarNative {
     CALENDAR_NATIVE
         .get()
         .log_expect("calendar native is not initialized")
@@ -139,7 +138,7 @@ pub extern "C" fn init(port: i64, data_dir: *const c_char) -> bool {
     let rt = runtime!();
     let task = Isolate::new(port).task(future::lazy(move |_| {
         let _ = CALENDAR_NATIVE
-            .set(Mutex::new(CalendarNative::new(data_dir)))
+            .set(CalendarNative::new(data_dir))
             .map_err(|_| {
                 error!("init calendar native failed");
             });
@@ -156,64 +155,26 @@ pub extern "C" fn destory_c_string(string: *mut c_char) {
 }
 
 #[no_mangle]
-pub extern "C" fn fetch_event(
-    port: i64,
-    start_time: *const c_char,
-    end_time: *const c_char,
-) -> bool {
-    let start_time = unsafe { CStr::from_ptr(start_time) }.to_str().log_unwrap();
-    let end_time = unsafe { CStr::from_ptr(end_time) }.to_str().log_unwrap();
+pub extern "C" fn calendar_db_graphql(port: i64, ops: *const raw::c_char) -> bool {
+    let ops = unsafe { CStr::from_ptr(ops) }.to_str().log_unwrap();
 
     let rt = runtime!();
-    let task = Isolate::new(port).task(future::lazy(|_| {
-        let result = if let Ok(c) = calendar_native().lock() {
-            c.secure_calendar_db
-                .fetch_calendar_event(start_time, end_time)
-                .unwrap_or_else(|_| vec![])
-        } else {
-            vec![]
-        };
 
-        let result = serde_json::to_string(&result).log_unwrap();
+    rt.spawn(async move {
+        let result = calendar_native()
+            .secure_calendar_db
+            .query(ops)
+            .map_err(|e| {
+                error!("{}", e);
+            })
+            .map(|(value, _)| {
+                let result = serde_json::to_string(&value).log_unwrap();
+                return result;
+            })
+            .unwrap_or_else(|_| "{}".to_owned());
 
-        result
-    }));
-    rt.spawn(task);
-
-    true
-}
-
-#[no_mangle]
-pub extern "C" fn add_event(port: i64, event: *const raw::c_char) -> bool {
-    let event = unsafe { CStr::from_ptr(event) }.to_str().log_unwrap();
-
-    let rt = runtime!();
-    let task = Isolate::new(port).task(future::lazy(|_| {
-        if let Ok(c) = calendar_native().lock() {
-            let event: serde_json::Value = serde_json::from_str(event).log_unwrap();
-
-            let _ = c.secure_calendar_db.add_event(event);
-        }
-
-        true
-    }));
-    rt.spawn(task);
-
-    true
-}
-
-#[no_mangle]
-pub extern "C" fn delete_event(port: i64, id: *const raw::c_char) -> bool {
-    let id = unsafe { CStr::from_ptr(id) }.to_str().log_unwrap();
-
-    let rt = runtime!();
-    let task = Isolate::new(port).task(future::lazy(|_| {
-        if let Ok(c) = calendar_native().lock() {
-            let _ = c.secure_calendar_db.delete_event(id);
-        }
-        true
-    }));
-    rt.spawn(task);
+        Isolate::new(port).post(result);
+    });
 
     true
 }

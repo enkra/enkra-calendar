@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 import 'package:isolate/ports.dart';
@@ -30,31 +31,14 @@ class CalendarNative {
     return directory.path;
   }
 
-  static Future<String> fetchEvent(String startTime, String endTime) {
+  static Future<Map<String, dynamic>> queryCalendarDb(String ops) async {
     final completer = Completer<String>();
     final sendPort = singleCompletePort(completer);
 
-    native.fetch_event(
-        sendPort.nativePort, startTime.toNativeUtf8(), endTime.toNativeUtf8());
+    native.calendar_db_graphql(sendPort.nativePort, ops.toNativeUtf8());
 
-    return completer.future;
-  }
+    final content = await completer.future;
 
-  static Future<void> addEvent(String event) {
-    final completer = Completer<bool>();
-    final sendPort = singleCompletePort(completer);
-
-    native.add_event(sendPort.nativePort, event.toNativeUtf8());
-
-    return completer.future;
-  }
-
-  static Future<void> deleteEvent(String eventId) {
-    final completer = Completer<bool>();
-    final sendPort = singleCompletePort(completer);
-
-    native.delete_event(sendPort.nativePort, eventId.toNativeUtf8());
-
-    return completer.future;
+    return jsonDecode(content);
   }
 }

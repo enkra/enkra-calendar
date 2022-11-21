@@ -1,15 +1,23 @@
 use std::path::Path;
+use std::sync::Mutex;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 
-use chrono::DateTime;
+use chrono::{DateTime, Utc};
+use juniper::{
+    DefaultScalarValue, EmptySubscription, ExecutionError, FieldResult, GraphQLInputObject,
+    GraphQLObject, RootNode, Variables,
+};
 use log::info;
-use log_err::{LogErrOption, LogErrResult};
+use log_err::LogErrResult;
 use nosqlite::{field, Field, Filter, Key, KeyTable};
 use rusqlite::{params, types::Value, Connection};
+use serde::{Deserialize, Serialize};
+
+type Schema = RootNode<'static, Query, Mutation, EmptySubscription<CalendarDb>>;
 
 pub struct CalendarDb {
-    db: nosqlite::Connection,
+    db: Mutex<nosqlite::Connection>,
 }
 
 impl CalendarDb {
@@ -24,7 +32,7 @@ impl CalendarDb {
 
         let db = nosqlite::Connection::from_rusqlite(db);
 
-        Ok(CalendarDb { db })
+        Ok(CalendarDb { db: Mutex::new(db) })
     }
 
     fn configure(db: &rusqlite::Connection, password: Vec<u8>) -> Result<()> {
@@ -54,78 +62,19 @@ impl CalendarDb {
 
         Ok(())
     }
-}
 
-impl CalendarDb {
-    pub fn fetch_calendar_event(
+    pub fn query(
         &self,
-        start_time: &str,
-        end_time: &str,
-    ) -> Result<Vec<serde_json::Value>> {
-        let calendar_events: KeyTable<String> = self.db.key_table("calendar_events")?;
-
-        let start_time = DateTime::parse_from_rfc3339(start_time)?;
-        let end_time = DateTime::parse_from_rfc3339(end_time)?;
-
-        // We used DateTime to validate the `start` and `end` times.
-        // So below query is safe against SQL injection.
-        let result: Vec<serde_json::Value> = calendar_events
-            .as_ref()
-            .iter()
-            .filter(
-                date_field("start")
-                    .gte(start_time.timestamp())
-                    .and(date_field("start").lte(end_time.timestamp())),
-            )
-            .data(&self.db)?;
-
-        Ok(result)
-    }
-
-    pub fn add_event(&self, event: serde_json::Value) -> Result<()> {
-        let calendar_events: KeyTable<String> = self.db.key_table("calendar_events".to_owned())?;
-
-        let id = event["uid"].as_str().log_unwrap().to_string();
-
-        // has id in database
-        if calendar_events
-            .as_ref()
-            .get(id.clone())
-            .id(&self.db)?
-            .is_some()
-        {
-            let table_name = calendar_events.0.name;
-
-            // Use rusqlite instead of nosqlite to avoid SQL injection
-            self.db.as_ref().execute(
-                &format!(
-                    "UPDATE {} SET data = json_patch(data, :value) where id = :id",
-                    table_name,
-                ),
-                &[
-                    (":value", &Value::Text(serde_json::to_string(&event)?)),
-                    (":id", &id.into()),
-                ],
-            )?;
-        } else {
-            calendar_events.insert(id, event, &self.db)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn delete_event(&self, event_id: &str) -> Result<()> {
-        let calendar_events: KeyTable<String> = self.db.key_table("calendar_events".to_owned())?;
-
-        let table_name = calendar_events.0.name;
-
-        // Use rusqlite instead of nosqlite to avoid SQL injection
-        self.db.as_ref().execute(
-            &format!("DELETE FROM {} WHERE id = ?1", table_name),
-            params![event_id],
-        )?;
-
-        Ok(())
+        ops: &str,
+    ) -> Result<(juniper::Value, Vec<ExecutionError<DefaultScalarValue>>)> {
+        juniper::execute_sync(
+            ops,
+            None,
+            &Schema::new(Query, Mutation, EmptySubscription::new()),
+            &Variables::new(),
+            &self,
+        )
+        .map_err(|e| anyhow!("{}", e.to_string()))
     }
 }
 
@@ -141,11 +90,133 @@ fn date_field(field_name: &str) -> DateTimeField {
     DateTimeField(field(field_name))
 }
 
+#[derive(GraphQLInputObject, Clone, Serialize)]
+struct NewEvent {
+    uid: String,
+    summary: String,
+    start: chrono::DateTime<Utc>,
+    description: Option<String>,
+}
+
+impl NewEvent {
+    fn to_event(&self) -> Event {
+        Event {
+            uid: self.uid.clone(),
+            summary: self.summary.clone(),
+            start: self.start.clone(),
+            description: self.description.clone(),
+        }
+    }
+}
+
+#[derive(GraphQLObject, Clone, Deserialize, Debug, PartialEq)]
+struct Event {
+    uid: String,
+    summary: String,
+    start: chrono::DateTime<Utc>,
+    description: Option<String>,
+}
+
+impl Event {
+    fn fetch(db: &CalendarDb, start: DateTime<Utc>, end: DateTime<Utc>) -> FieldResult<Vec<Event>> {
+        let db = db.db.lock()?;
+
+        let calendar_events: KeyTable<String> = db.key_table("calendar_events")?;
+
+        // We used DateTime to validate the `start` and `end` times.
+        // So below query is safe against SQL injection.
+        let result: Vec<Event> = calendar_events
+            .as_ref()
+            .iter()
+            .filter(
+                date_field("start")
+                    .gte(start.timestamp())
+                    .and(date_field("start").lte(end.timestamp())),
+            )
+            .data(&*db)?;
+
+        Ok(result)
+    }
+
+    fn add(db: &CalendarDb, event: NewEvent) -> FieldResult<Event> {
+        let db = db.db.lock()?;
+
+        let calendar_events: KeyTable<String> = db.key_table("calendar_events".to_owned())?;
+
+        // has id in database
+        if calendar_events
+            .as_ref()
+            .get(event.uid.clone())
+            .id(&*db)?
+            .is_some()
+        {
+            let table_name = calendar_events.0.name;
+
+            // Use rusqlite instead of nosqlite to avoid SQL injection
+            db.as_ref().execute(
+                &format!(
+                    "UPDATE {} SET data = json_patch(data, :value) where id = :id",
+                    table_name,
+                ),
+                &[
+                    (":value", &Value::Text(serde_json::to_string(&event)?)),
+                    (":id", &event.uid.clone().into()),
+                ],
+            )?;
+        } else {
+            calendar_events.insert(event.uid.clone(), event.clone(), &*db)?;
+        }
+
+        Ok(event.to_event())
+    }
+
+    fn delete(db: &CalendarDb, uid: String) -> FieldResult<String> {
+        let db = db.db.lock()?;
+
+        let calendar_events: KeyTable<String> = db.key_table("calendar_events".to_owned())?;
+
+        let table_name = calendar_events.0.name;
+
+        // Use rusqlite instead of nosqlite to avoid SQL injection
+        db.as_ref().execute(
+            &format!("DELETE FROM {} WHERE id = ?1", table_name),
+            params![uid],
+        )?;
+
+        Ok(uid)
+    }
+}
+
+struct Query;
+
+#[juniper::graphql_object(Context = CalendarDb)]
+impl Query {
+    fn fetch_event(
+        db: &CalendarDb,
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
+    ) -> FieldResult<Vec<Event>> {
+        Event::fetch(db, start, end)
+    }
+}
+
+struct Mutation;
+
+#[juniper::graphql_object(Context = CalendarDb)]
+impl Mutation {
+    pub fn add_event(db: &CalendarDb, event: NewEvent) -> FieldResult<Event> {
+        Event::add(db, event)
+    }
+
+    pub fn delete_event(db: &CalendarDb, uid: String) -> FieldResult<String> {
+        Event::delete(db, uid)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    use serde_json::json;
     use tempfile::tempdir;
 
     #[test]
@@ -157,45 +228,53 @@ mod tests {
         let password = tink_core::subtle::random::get_random_bytes(32);
 
         let calendar_db = CalendarDb::new(db_path, password).unwrap();
-        let event1 = json!({
-            "uid": "id1",
-            "summary": "Meeting 1",
-            "start": "2022-01-02T13:00:00Z",
-        });
 
-        calendar_db.add_event(event1.clone()).unwrap();
+        let event1 = NewEvent {
+            uid: "id1".to_owned(),
+            summary: "Meeting 1".to_owned(),
+            start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            description: None,
+        };
 
-        let event2 = json!({
-            "uid": "id2",
-            "summary": "Meeting 1",
-            "start": "2022-01-02T13:00:00Z",
-        });
+        Event::add(&calendar_db, event1.clone()).unwrap();
 
-        calendar_db.add_event(event2.clone()).unwrap();
+        let event2 = NewEvent {
+            uid: "id2".to_owned(),
+            summary: "Meeting 1".to_owned(),
+            start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            description: None,
+        };
 
-        let earlier_event = json!({
-            "uid": "id3",
-            "summary": "Meeting 1",
-            "start": "2021-12-29T13:00:00Z",
-        });
+        Event::add(&calendar_db, event2.clone()).unwrap();
 
-        calendar_db.add_event(earlier_event.clone()).unwrap();
+        let earlier_event = NewEvent {
+            uid: "id3".to_owned(),
+            summary: "Meeting 1".to_owned(),
+            start: "2022-12-29T13:00:00Z".parse().unwrap(),
+            description: None,
+        };
 
-        let later_event = json!({
-            "uid": "id4",
-            "summary": "Meeting 1",
-            "start": "2022-01-04T13:00:00Z",
-        });
+        Event::add(&calendar_db, earlier_event.clone()).unwrap();
 
-        calendar_db.add_event(later_event.clone()).unwrap();
+        let later_event = NewEvent {
+            uid: "id4".to_owned(),
+            summary: "Meeting 1".to_owned(),
+            start: "2022-01-04T13:00:00Z".parse().unwrap(),
+            description: None,
+        };
 
-        let events = calendar_db
-            .fetch_calendar_event("2022-01-01T13:00:00Z", "2022-01-03T13:00:00Z")
-            .unwrap();
+        Event::add(&calendar_db, later_event.clone()).unwrap();
+
+        let events = Event::fetch(
+            &calendar_db,
+            "2022-01-01T13:00:00Z".parse().unwrap(),
+            "2022-01-03T13:00:00Z".parse().unwrap(),
+        )
+        .unwrap();
 
         assert_eq!(events.len(), 2);
-        assert_eq!(events[0], event1);
-        assert_eq!(events[1], event2);
+        assert_eq!(events[0], event1.to_event());
+        assert_eq!(events[1], event2.to_event());
     }
 
     #[test]
@@ -208,35 +287,45 @@ mod tests {
 
         {
             let calendar_db = CalendarDb::new(db_path.clone(), password.clone()).unwrap();
-            let v = json!({
-                "uid": "id1",
-                "summary": "Meeting 1",
-                "start": "2022-01-02T13:00:00Z",
-            });
 
-            calendar_db.add_event(v.clone()).unwrap();
+            let v = NewEvent {
+                uid: "id1".to_owned(),
+                summary: "Meeting 1".to_owned(),
+                start: "2022-01-02T13:00:00Z".parse().unwrap(),
+                description: None,
+            };
 
-            let events = calendar_db
-                .fetch_calendar_event("2022-01-01T13:00:00Z", "2022-01-03T13:00:00Z")
-                .unwrap();
+            Event::add(&calendar_db, v.clone()).unwrap();
+
+            let events = Event::fetch(
+                &calendar_db,
+                "2022-01-01T13:00:00Z".parse().unwrap(),
+                "2022-01-03T13:00:00Z".parse().unwrap(),
+            )
+            .unwrap();
 
             assert_eq!(events.len(), 1);
-            assert_eq!(events[0], v);
+            assert_eq!(events[0], v.to_event());
         }
         {
             let calendar_db = CalendarDb::new(db_path, password).unwrap();
-            let v = json!({
-                "uid": "id1",
-                "summary": "Meeting 1",
-                "start": "2022-01-02T13:00:00Z",
-            });
 
-            let events = calendar_db
-                .fetch_calendar_event("2022-01-01T13:00:00Z", "2022-01-03T13:00:00Z")
-                .unwrap();
+            let v = NewEvent {
+                uid: "id1".to_owned(),
+                summary: "Meeting 1".to_owned(),
+                start: "2022-01-02T13:00:00Z".parse().unwrap(),
+                description: None,
+            };
+
+            let events = Event::fetch(
+                &calendar_db,
+                "2022-01-01T13:00:00Z".parse().unwrap(),
+                "2022-01-03T13:00:00Z".parse().unwrap(),
+            )
+            .unwrap();
 
             assert_eq!(events.len(), 1);
-            assert_eq!(events[0], v);
+            assert_eq!(events[0], v.to_event());
         }
     }
 
@@ -249,35 +338,43 @@ mod tests {
         let password = tink_core::subtle::random::get_random_bytes(32);
         let calendar_db = CalendarDb::new(db_path, password).unwrap();
 
-        let event = json!({
-            "uid": "id1",
-            "summary": "Meeting 1",
-            "start": "2022-01-02T13:00:00Z",
-        });
+        let event = NewEvent {
+            uid: "id1".to_owned(),
+            summary: "Meeting 1".to_owned(),
+            start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            description: None,
+        };
 
-        calendar_db.add_event(event.clone()).unwrap();
+        Event::add(&calendar_db, event.clone()).unwrap();
 
-        let events = calendar_db
-            .fetch_calendar_event("2022-01-01T13:00:00Z", "2022-01-03T13:00:00Z")
-            .unwrap();
-
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0], event);
-
-        let new_event = json!({
-            "uid": "id1",
-            "summary": "Meeting 2",
-            "start": "2022-01-02T13:00:00Z",
-        });
-
-        calendar_db.add_event(new_event.clone()).unwrap();
-
-        let events = calendar_db
-            .fetch_calendar_event("2022-01-01T13:00:00Z", "2022-01-03T13:00:00Z")
-            .unwrap();
+        let events = Event::fetch(
+            &calendar_db,
+            "2022-01-01T13:00:00Z".parse().unwrap(),
+            "2022-01-03T13:00:00Z".parse().unwrap(),
+        )
+        .unwrap();
 
         assert_eq!(events.len(), 1);
-        assert_eq!(events[0], new_event);
+        assert_eq!(events[0], event.to_event());
+
+        let new_event = NewEvent {
+            uid: "id1".to_owned(),
+            summary: "Meeting 2".to_owned(),
+            start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            description: None,
+        };
+
+        Event::add(&calendar_db, new_event.clone()).unwrap();
+
+        let events = Event::fetch(
+            &calendar_db,
+            "2022-01-01T13:00:00Z".parse().unwrap(),
+            "2022-01-03T13:00:00Z".parse().unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0], new_event.to_event());
     }
 
     #[test]
@@ -289,37 +386,45 @@ mod tests {
         let password = tink_core::subtle::random::get_random_bytes(32);
         let calendar_db = CalendarDb::new(db_path, password).unwrap();
 
-        let event1 = json!({
-            "uid": "id1",
-            "summary": "Meeting 1",
-            "start": "2022-01-02T13:00:00Z",
-        });
+        let event1 = NewEvent {
+            uid: "id1".to_owned(),
+            summary: "Meeting 1".to_owned(),
+            start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            description: None,
+        };
 
-        calendar_db.add_event(event1.clone()).unwrap();
+        Event::add(&calendar_db, event1.clone()).unwrap();
 
-        let event2 = json!({
-            "uid": "id2",
-            "summary": "Meeting 2",
-            "start": "2022-01-02T13:00:00Z",
-        });
+        let event2 = NewEvent {
+            uid: "id2".to_owned(),
+            summary: "Meeting 2".to_owned(),
+            start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            description: None,
+        };
 
-        calendar_db.add_event(event2.clone()).unwrap();
+        Event::add(&calendar_db, event2.clone()).unwrap();
 
-        let events = calendar_db
-            .fetch_calendar_event("2022-01-01T13:00:00Z", "2022-01-03T13:00:00Z")
-            .unwrap();
+        let events = Event::fetch(
+            &calendar_db,
+            "2022-01-01T13:00:00Z".parse().unwrap(),
+            "2022-01-03T13:00:00Z".parse().unwrap(),
+        )
+        .unwrap();
 
         assert_eq!(events.len(), 2);
-        assert_eq!(events[0], event1);
+        assert_eq!(events[0], event1.to_event());
 
-        calendar_db.delete_event("id1").unwrap();
+        Event::delete(&calendar_db, "id1".to_owned()).unwrap();
 
-        let events = calendar_db
-            .fetch_calendar_event("2022-01-01T13:00:00Z", "2022-01-03T13:00:00Z")
-            .unwrap();
+        let events = Event::fetch(
+            &calendar_db,
+            "2022-01-01T13:00:00Z".parse().unwrap(),
+            "2022-01-03T13:00:00Z".parse().unwrap(),
+        )
+        .unwrap();
 
         assert_eq!(events.len(), 1);
-        assert_eq!(events[0], event2);
+        assert_eq!(events[0], event2.to_event());
     }
 
     #[test]
@@ -331,25 +436,32 @@ mod tests {
         let password = tink_core::subtle::random::get_random_bytes(32);
         let calendar_db = CalendarDb::new(db_path, password).unwrap();
 
-        let events = calendar_db
-            .fetch_calendar_event("2022-01-01T13:00:00Z", "2022-01-03T13:00:00Z")
-            .unwrap();
+        let events = Event::fetch(
+            &calendar_db,
+            "2022-01-01T13:00:00Z".parse().unwrap(),
+            "2022-01-03T13:00:00Z".parse().unwrap(),
+        )
+        .unwrap();
 
         assert_eq!(events.len(), 0);
 
-        let event1 = json!({
-            "uid": "id1",
-            "summary": "Meeting 1",
-            "start": "2022-01-02T13:00:00Z",
-        });
+        let event1 = NewEvent {
+            uid: "id1".to_owned(),
+            summary: "Meeting 1".to_owned(),
+            start: "2022-01-02T13:00:00Z".parse().unwrap(),
+            description: None,
+        };
 
-        calendar_db.add_event(event1.clone()).unwrap();
+        Event::add(&calendar_db, event1.clone()).unwrap();
 
-        let events = calendar_db
-            .fetch_calendar_event("2022-01-01T13:00:00Z", "2022-01-03T13:00:00Z")
-            .unwrap();
+        let events = Event::fetch(
+            &calendar_db,
+            "2022-01-01T13:00:00Z".parse().unwrap(),
+            "2022-01-03T13:00:00Z".parse().unwrap(),
+        )
+        .unwrap();
 
         assert_eq!(events.len(), 1);
-        assert_eq!(events[0], event1);
+        assert_eq!(events[0], event1.to_event());
     }
 }

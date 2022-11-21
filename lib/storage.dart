@@ -18,46 +18,62 @@ class IEventsInJsonFile extends IEvents {
     final startTime = start.localTime().toUtc();
     final endTime = end.localEndOfDay().toUtc();
 
-    try {
-      final contents = await CalendarNative.fetchEvent(
-        startTime.toIso8601String(),
-        endTime.toIso8601String(),
-      );
+    final ops = """
+     query {
+       fetchEvent(start: "${startTime}", end: "${endTime}") {
+           uid
+           start
+           summary
+        }
+     }
+     """;
 
-      List<dynamic> events = jsonDecode(contents);
+    List<dynamic> events =
+        (await CalendarNative.queryCalendarDb(ops))['fetchEvent']!;
 
-      return events
-          .map((e) => IEvent(
-                uid: e["uid"],
-                status: IEventStatus.CONFIRMED,
-                start: DateTime.parse(e["start"]),
-                summary: e["summary"],
-              ))
-          .toList();
-    } catch (e) {
-      // If encountering an error, return empty list
-      return [];
-    }
+    return events
+        .map((e) => IEvent(
+              uid: e["uid"],
+              status: IEventStatus.CONFIRMED,
+              start: DateTime.parse(e["start"]),
+              summary: e["summary"],
+            ))
+        .toList();
   }
 
   @override
   Future<void> add(IEvent event) async {
     await _setup;
 
-    final e = {
-      "uid": event.uid,
-      "summary": event.summary,
-      "start": event.start.toString(),
-      "description": event.description,
-    };
+    final ops = """
+     mutation {
+       addEvent(
+         event: {
+           uid: "${event.uid}",
+           summary: "${event.summary}",
+           start: "${event.start.toUtc().toIso8601String()}",
+         }
+       ) {
+           uid
+           start
+           summary
+        }
+     }
+     """;
 
-    await CalendarNative.addEvent(jsonEncode(e));
+    await CalendarNative.queryCalendarDb(ops);
   }
 
   @override
   Future<void> remove(uid) async {
     await _setup;
 
-    await CalendarNative.deleteEvent(uid);
+    final ops = """
+     mutation {
+       deleteEvent(uid: "$uid")
+     }
+     """;
+
+    await CalendarNative.queryCalendarDb(ops);
   }
 }

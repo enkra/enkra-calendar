@@ -88,7 +88,10 @@ class CalendarManager extends ChangeNotifier {
   }
 
   Future<Map<Date, DateEvent>> getByDateRange(Date start, Date end) async {
-    final events = await _events.fetchEvent(start, end);
+    final events = (await _events.fetchEvent(start, end)).map((IEvent e) {
+      e.start = e.start.toLocal();
+      return e;
+    }).toList();
 
     final eventMap = groupBy(events, (IEvent e) => Date.fromTime(e.start))
         .map((day, events) => MapEntry(day, DateEvent(events: events)));

@@ -20,12 +20,15 @@ pickledb = "0.4.1"
 rusqlite = { version = "0.27.0", features = ["bundled-sqlcipher-vendored-openssl"] }
 nosqlite = { git = "https://github.com/abraca-app/nosqlite", rev = "28c6ce36c3cb87e33492c5cb3e156c817d24e704" }
 serde_json = "1.0.79"
-chrono = "0.4.19"
+chrono = { version = "0.4.19", features = ["serde"] }
 hex = "0.4.3"
 once_cell = "1.10.0"
 futures = { version = "0.3.21", default-features = false }
 log = "0.4.16"
 log_err = "1.1.1"
+juniper = { version = "0.15.9", default-features = false, features = ["chrono"] }
+serde = "1.0.136"
+indexmap = { version = "1.8.1", features = ["std"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.11.0"
