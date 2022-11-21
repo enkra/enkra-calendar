@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use anyhow::{anyhow, bail, Result};
+use log::info;
 use log_err::LogErrResult;
 use pickledb::{PickleDb, PickleDbDumpPolicy, SerializationMethod};
 use tink_core::{
@@ -31,7 +32,10 @@ impl SecureLocalStorage {
     }
 
     pub fn set<T: SecureStorable>(&mut self, key: &str, value: &T) -> Result<()> {
-        if key == Self::KEY_KEYSET_ALIAS || key == Self::VALUE_KEYSET_ALIAS {
+        if key == Self::KEY_KEYSET_ALIAS
+            || key == Self::VALUE_KEYSET_ALIAS
+            || key == Self::VERSION_KEY
+        {
             bail!("preserve key");
         }
 
@@ -71,6 +75,9 @@ impl SecureLocalStorage {
             .set(&key_str, &value)
             .map_err(|e| anyhow!("{}", e))?;
 
+        // dump db here because we load db with DumpUponRequest policy.
+        self.db.dump()?;
+
         Ok(())
     }
 
@@ -82,22 +89,49 @@ impl SecureLocalStorage {
 
         Ok(key)
     }
+
+    fn load_or_create_db<P: AsRef<Path> + Clone>(db_path: P) -> PickleDb {
+        // load db with DumpUponRequest add dumps call in `set` and `remove`.
+        // Remove unnessary dumps to reduce file corrupt risk.
+        if !db_path.as_ref().exists() {
+            return PickleDb::new(
+                db_path,
+                PickleDbDumpPolicy::DumpUponRequest,
+                SerializationMethod::Cbor,
+            );
+        }
+
+        PickleDb::load(
+            db_path.clone(),
+            PickleDbDumpPolicy::DumpUponRequest,
+            SerializationMethod::Cbor,
+        )
+        .log_expect(&format!(
+            "load existed secure_local_stoage db error: {}",
+            db_path.as_ref().file_name().unwrap().to_string_lossy()
+        ))
+    }
 }
 
 impl SecureLocalStorage {
-    const KEY_KEYSET_ALIAS: &'static str = "__secure_local_storage_key_keyset__";
+    const KEY_KEYSET_ALIAS: &'static str = "__secure_local_storage_kms_protected_key_keyset__";
 
-    const VALUE_KEYSET_ALIAS: &'static str = "__secure_local_storage_value_keyset__";
+    const VALUE_KEYSET_ALIAS: &'static str = "__secure_local_storage_kms_protected_value_keyset__";
 
-    const MASTER_KEYSET_ALIAS: &'static str = "__secure_local_storage_master_key__";
+    const VERSION_KEY: &'static str = "__secure_local_storage_version__";
 
-    pub fn new<P: AsRef<Path> + Clone>(
+    pub fn new_with_kms<P: AsRef<Path> + Clone>(
         file_path: P,
         device_kms: &Box<dyn DeviceKms>,
+        master_key_alias: &str,
     ) -> Result<SecureLocalStorage> {
-        let mut db = Self::load_db(file_path);
+        let mut db = Self::load_or_create_db(file_path);
 
-        let master_key = Self::read_or_generate_master_key(device_kms, Self::MASTER_KEYSET_ALIAS)?;
+        let version = Self::read_or_generate_version(&mut db)?;
+
+        info!("secure local storage version: {}", version);
+
+        let master_key = Self::read_or_generate_master_key(device_kms, master_key_alias)?;
 
         let daead_keyset = Self::read_or_generate_key(
             &mut db,
@@ -124,26 +158,6 @@ impl SecureLocalStorage {
 
             db,
         })
-    }
-
-    fn load_db<P: AsRef<Path> + Clone>(db_path: P) -> PickleDb {
-        if !db_path.as_ref().exists() {
-            return PickleDb::new(
-                db_path,
-                PickleDbDumpPolicy::AutoDump,
-                SerializationMethod::Cbor,
-            );
-        }
-
-        PickleDb::load(
-            db_path.clone(),
-            PickleDbDumpPolicy::AutoDump,
-            SerializationMethod::Cbor,
-        )
-        .log_expect(&format!(
-            "load existed secure_local_stoage db error: {}",
-            db_path.as_ref().file_name().unwrap().to_string_lossy()
-        ))
     }
 
     fn read_or_generate_master_key(
@@ -198,6 +212,30 @@ impl SecureLocalStorage {
         db.set(&key_name, &value).map_err(|e| anyhow!("{}", e))?;
 
         Ok(keyset)
+    }
+
+    fn read_or_generate_version(db: &mut PickleDb) -> Result<u64> {
+        let key_name = base64::encode(Self::VERSION_KEY.as_bytes());
+
+        let value: Option<u64> = db.get(&key_name);
+
+        if let Some(value) = value {
+            return Ok(value);
+        }
+
+        db.set::<u64>(&key_name, &1).map_err(|e| anyhow!("{}", e))?;
+        db.dump()?;
+
+        Ok(1)
+    }
+
+    #[cfg(test)]
+    fn get_version(&self) -> Option<u64> {
+        let key_name = base64::encode(Self::VERSION_KEY.as_bytes());
+
+        let value: Option<u64> = self.db.get(&key_name);
+
+        value
     }
 }
 
@@ -290,7 +328,8 @@ mod tests {
 
         let device_kms: Box<dyn DeviceKms> = Box::new(TestKms::new());
 
-        let mut secure_local_storage = SecureLocalStorage::new(db_path, &device_kms).unwrap();
+        let mut secure_local_storage =
+            SecureLocalStorage::new_with_kms(db_path, &device_kms, "master_key").unwrap();
 
         secure_local_storage.set("key1", &"123".to_owned()).unwrap();
         secure_local_storage.set("key2", &"456".to_owned()).unwrap();
@@ -322,7 +361,8 @@ mod tests {
 
         let device_kms: Box<dyn DeviceKms> = Box::new(TestKms::new());
 
-        let mut secure_local_storage = SecureLocalStorage::new(db_path, &device_kms).unwrap();
+        let mut secure_local_storage =
+            SecureLocalStorage::new_with_kms(db_path, &device_kms, "master_key").unwrap();
 
         secure_local_storage.set("key1", &"123".to_owned()).unwrap();
 
@@ -350,20 +390,26 @@ mod tests {
 
         {
             let mut secure_local_storage =
-                SecureLocalStorage::new(db_path.clone(), &device_kms).unwrap();
+                SecureLocalStorage::new_with_kms(db_path.clone(), &device_kms, "master_key")
+                    .unwrap();
 
             secure_local_storage.set("key1", &bytes).unwrap();
             let value1: Vec<u8> = secure_local_storage.get("key1").unwrap().unwrap();
             assert_eq!(value1, bytes);
+
+            assert_eq!(secure_local_storage.get_version().unwrap(), 1);
         }
 
         //reload db
         {
             let secure_local_storage =
-                SecureLocalStorage::new(db_path.clone(), &device_kms).unwrap();
+                SecureLocalStorage::new_with_kms(db_path.clone(), &device_kms, "master_key")
+                    .unwrap();
 
             let value1: Vec<u8> = secure_local_storage.get("key1").unwrap().unwrap();
             assert_eq!(value1, bytes);
+
+            assert_eq!(secure_local_storage.get_version().unwrap(), 1);
         }
     }
 }

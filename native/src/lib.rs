@@ -58,30 +58,42 @@ struct CalendarNative {
 }
 
 impl CalendarNative {
-    const SECURE_LOCAL_STOAGE_FILE: &'static str = "secure_local_storage.db";
+    const SECURE_LOCAL_STOAGE_FILE: &'static str = "vault.db";
 
     const CALENDAR_DB_KEY: &'static str = "calendar_db_key";
     const CALENDAR_DB_FILE: &'static str = "calendar.db";
 
-    pub fn new<P: AsRef<Path> + Clone>(data_dir: P) -> Self {
-        #[cfg(target_os = "android")]
-        let device_kms: Box<dyn DeviceKms> = Box::new(AndroidKms::new());
-        #[cfg(not(target_os = "android"))]
-        let device_kms: Box<dyn DeviceKms> = Box::new(EmptyKms::new());
+    const MASTER_KEYSET_ALIAS: &'static str = "__calendar_vault_master_key__";
 
+    pub fn new<P: AsRef<Path> + Clone>(data_dir: P) -> Self {
         let data_dir = data_dir.as_ref();
 
-        let mut secure_local_storage =
-            SecureLocalStorage::new(data_dir.join(Self::SECURE_LOCAL_STOAGE_FILE), &device_kms)
-                .log_unwrap();
+        // value.db is to store calendar app secrets such as sqlite db key.
+        // Don't store app config preferences in it. Use a separate SecureLocalStorage
+        // to store them.
+        let mut vault = SecureLocalStorage::new_with_kms(
+            data_dir.join(Self::SECURE_LOCAL_STOAGE_FILE),
+            &Self::build_deivce_kms(),
+            Self::MASTER_KEYSET_ALIAS,
+        )
+        .log_unwrap();
 
-        let password = Self::get_or_generate_calendar_db_key(&mut secure_local_storage);
+        let password = Self::get_or_generate_calendar_db_key(&mut vault);
         let calendar_db =
             CalendarDb::new(data_dir.join(Self::CALENDAR_DB_FILE), password).log_unwrap();
 
         CalendarNative {
             secure_calendar_db: calendar_db,
         }
+    }
+
+    fn build_deivce_kms() -> Box<dyn DeviceKms> {
+        #[cfg(target_os = "android")]
+        let device_kms: Box<dyn DeviceKms> = Box::new(AndroidKms::new());
+        #[cfg(not(target_os = "android"))]
+        let device_kms: Box<dyn DeviceKms> = Box::new(EmptyKms::new());
+
+        device_kms
     }
 
     fn get_or_generate_calendar_db_key(secure_local_storage: &mut SecureLocalStorage) -> Vec<u8> {

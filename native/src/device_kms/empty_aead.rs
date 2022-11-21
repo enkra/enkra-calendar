@@ -1,13 +1,4 @@
-use anyhow::Result;
 use tink_core::Aead;
-
-pub trait DeviceKms {
-    fn new_key(&self, key_alias: &str) -> Result<()>;
-
-    fn has_key(&self, key_alias: &str) -> Result<bool>;
-
-    fn aead(&self, key_alias: &str) -> Result<Box<dyn Aead>>;
-}
 
 // Prefix tag format: 1 start byte | 4 bytes tag.
 // the start byte is always 1
@@ -18,7 +9,7 @@ const TAG_SIZE: usize = 5;
 pub struct EmptyAeadWithPrefixTag([u8; TAG_SIZE]);
 
 impl EmptyAeadWithPrefixTag {
-    fn new(tag: u32) -> EmptyAeadWithPrefixTag {
+    pub fn new(tag: u32) -> EmptyAeadWithPrefixTag {
         let mut prefix: [u8; 5] = [0; 5];
 
         prefix[0] = 1;
@@ -59,73 +50,6 @@ impl Aead for EmptyAeadWithPrefixTag {
         }
 
         Ok(ciphertext[5..].to_vec())
-    }
-}
-
-#[cfg(not(target_os = "android"))]
-pub mod desktop {
-    use super::*;
-
-    // A KMS do nothing
-    pub struct EmptyKms;
-
-    impl DeviceKms for EmptyKms {
-        fn new_key(&self, _key_alias: &str) -> Result<()> {
-            Ok(())
-        }
-
-        fn has_key(&self, _key_alias: &str) -> Result<bool> {
-            Ok(true)
-        }
-
-        fn aead(&self, _key_alias: &str) -> Result<Box<dyn Aead>> {
-            Ok(Box::new(EmptyAeadWithPrefixTag::new(0)))
-        }
-    }
-
-    impl EmptyKms {
-        pub fn new() -> Self {
-            Self
-        }
-    }
-}
-
-#[cfg(target_os = "android")]
-pub mod android {
-    use super::*;
-
-    pub struct AndroidKms;
-
-    enum CipherSchema {
-        NonEncryption = 0,
-
-        // Not used currently, can enable it in future
-        #[allow(dead_code)]
-        AndroidKeyStore = 1,
-    }
-
-    const PRIMARY_CIPHER_SCHEMA: CipherSchema = CipherSchema::NonEncryption;
-
-    impl DeviceKms for AndroidKms {
-        fn new_key(&self, _key_alias: &str) -> Result<()> {
-            Ok(())
-        }
-
-        fn has_key(&self, _key_alias: &str) -> Result<bool> {
-            Ok(true)
-        }
-
-        fn aead(&self, _key_alias: &str) -> Result<Box<dyn Aead>> {
-            Ok(Box::new(EmptyAeadWithPrefixTag::new(
-                PRIMARY_CIPHER_SCHEMA as u32,
-            )))
-        }
-    }
-
-    impl AndroidKms {
-        pub fn new() -> Self {
-            AndroidKms
-        }
     }
 }
 
