@@ -24,10 +24,11 @@ Widget editingPage(
         isAllDay: true,
       ));
 
-  final start = useState(event.value.localStart());
-  final end = useState(event.value.localEnd() ?? event.value.localStart());
-
-  final isAllDay = useState(event.value.isAllDay);
+  final timeRanger = useState(EventTimeRanger(
+    start: event.value.localStart(),
+    end: event.value.localEnd(),
+    isAllDay: event.value.isAllDay,
+  ));
 
   final theme = Theme.of(context);
 
@@ -43,10 +44,11 @@ Widget editingPage(
                 final calendarManager =
                     Provider.of<CalendarManager>(context, listen: false);
 
-                if (isAllDay.value) {
-                  event.value.setTimeAsAllDay(start.value, end.value);
+                final time = timeRanger.value;
+                if (time.isAllDay) {
+                  event.value.setTimeAsAllDay(time.start, time.end);
                 } else {
-                  event.value.setTime(start.value, end.value);
+                  event.value.setTime(time.start, time.end);
                 }
 
                 if (event.value.uid == null) {
@@ -109,29 +111,33 @@ Widget editingPage(
           title: const Text("All day"),
           trailing: Switch(
             activeColor: theme.primaryColor,
-            value: isAllDay.value,
+            value: timeRanger.value.isAllDay,
             onChanged: (_isAllDay) {
-              isAllDay.value = _isAllDay;
+              timeRanger.value.isAllDay = _isAllDay;
+              timeRanger.notifyListeners();
             },
           ),
         ),
         ListTile(
           leading: const SizedBox(),
           title: _TimePicker(
-            initialTime: start.value,
-            isShowTime: !isAllDay.value,
+            initialTime: timeRanger.value.localStart(),
+            isShowTime: !timeRanger.value.isAllDay,
             onTimePicked: (time) {
-              start.value = time;
+              timeRanger.value.setStart(time);
+              timeRanger.notifyListeners();
             },
           ),
         ),
         ListTile(
           leading: const SizedBox(),
           title: _TimePicker(
-            initialTime: event.value.localEnd() ?? event.value.localStart(),
-            isShowTime: !isAllDay.value,
+            initialTime:
+                timeRanger.value.localEnd() ?? timeRanger.value.localStart(),
+            isShowTime: !timeRanger.value.isAllDay,
             onTimePicked: (time) {
-              end.value = time;
+              timeRanger.value.setEnd(time);
+              timeRanger.notifyListeners();
             },
           ),
         ),
@@ -179,11 +185,11 @@ Widget _timePicker(
   void Function(DateTime)? onTimePicked,
   bool isShowTime = true,
 }) {
-  final time = useState(initialTime);
+  final time = initialTime;
 
-  final timeOfDay = TimeOfDay.fromDateTime(time.value);
+  final timeOfDay = TimeOfDay.fromDateTime(time);
 
-  final dateString = DateFormat("E, MMM d, y").format(time.value);
+  final dateString = DateFormat("E, MMM d, y").format(time);
 
   var widgets = [
     InkWell(
@@ -191,7 +197,7 @@ Widget _timePicker(
       onTap: () async {
         final date = await showDatePicker(
             context: context,
-            initialDate: time.value,
+            initialDate: time,
             firstDate: DateTime(2015, 8),
             lastDate: DateTime(2101));
 
@@ -199,15 +205,15 @@ Widget _timePicker(
           return;
         }
 
-        time.value = DateTime(
+        final newTime = DateTime(
           date.year,
           date.month,
           date.day,
-          time.value.hour,
-          time.value.minute,
+          time.hour,
+          time.minute,
         );
 
-        onTimePicked?.call(time.value);
+        onTimePicked?.call(newTime);
       },
     ),
   ];
@@ -226,15 +232,15 @@ Widget _timePicker(
             return;
           }
 
-          time.value = DateTime(
-            time.value.year,
-            time.value.month,
-            time.value.day,
+          final newTime = DateTime(
+            time.year,
+            time.month,
+            time.day,
             _time.hour,
             _time.minute,
           );
 
-          onTimePicked?.call(time.value);
+          onTimePicked?.call(newTime);
         },
       ),
     );

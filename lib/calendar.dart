@@ -164,7 +164,9 @@ class CalendarEvent {
   String? uid;
   String? summary;
   String? description;
+  // UTC time
   DateTime start;
+  // UTC time
   DateTime? end;
 
   bool isAllDay;
@@ -189,29 +191,145 @@ class CalendarEvent {
     );
   }
 
-  setTime(DateTime start, DateTime end) {
+  setTime(DateTime start, DateTime? end) {
     isAllDay = false;
 
     this.start = start.toUtc();
-    this.end = end.toUtc();
+    this.end = end?.toUtc();
   }
 
-  setTimeAsAllDay(DateTime start, DateTime end) {
+  getDate(DateTime? time) {
+    final localTime = time?.toLocal();
+
+    if (localTime != null) {
+      final date = Date.fromTime(localTime);
+      return date.utcTime();
+    }
+
+    return null;
+  }
+
+  setTimeAsAllDay(DateTime start, DateTime? end) {
     isAllDay = true;
 
-    final startTime = start.toLocal();
-    final startDate = Date.fromTime(startTime);
-
-    this.start = startDate.utcTime();
-
-    final endTime = end.toLocal();
-    final endDate = Date.fromTime(endTime);
-
-    this.end = endDate.utcTime();
+    this.start = getDate(start);
+    this.end = getDate(end);
   }
 
-  setEnd(DateTime time) {
-    end = time.toUtc();
+  DateTime localStart() {
+    if (isAllDay) {
+      return Date.fromTime(start).localTime();
+    } else {
+      return start.toLocal();
+    }
+  }
+
+  DateTime? localEnd() {
+    if (isAllDay && end != null) {
+      return Date.fromTime(end!).localTime();
+    } else if (isAllDay && end == null) {
+      final startDate = Date.fromTime(start);
+      final endDate = startDate.add(1);
+
+      return endDate.localTime();
+    } else {
+      return end?.toLocal();
+    }
+  }
+}
+
+class EventTimeRanger {
+  // Local DateTime
+  DateTime start;
+  // Local DateTime
+  DateTime? end;
+  bool isAllDay;
+
+  EventTimeRanger({
+    required this.start,
+    required this.end,
+    this.isAllDay = false,
+  });
+
+  setStart(DateTime start) {
+    if (isAllDay) {
+      setStartAllDay(start);
+    } else {
+      setStartNormal(start);
+    }
+  }
+
+  setEnd(DateTime end) {
+    if (isAllDay) {
+      setEndAllDay(end);
+    } else {
+      setEndNormal(end);
+    }
+  }
+
+  setAllDay(bool isAllDay) {
+    this.isAllDay = isAllDay;
+  }
+
+  setStartNormal(DateTime start) {
+    isAllDay = false;
+
+    final newStart = start.toLocal();
+    var newEnd = end;
+
+    if (newEnd != null && newEnd.difference(newStart) < Duration.zero) {
+      final oldDiff = end!.difference(this.start);
+
+      newEnd = newStart.add(oldDiff);
+    }
+
+    this.start = newStart;
+    end = newEnd;
+  }
+
+  setEndNormal(DateTime end) {
+    isAllDay = false;
+
+    var newStart = start;
+    final newEnd = end.toLocal();
+
+    if (newEnd.difference(newStart) < Duration.zero) {
+      final oldDiff = this.end?.difference(start);
+
+      newStart = newEnd.subtract(oldDiff ?? Duration.zero);
+    }
+
+    start = newStart;
+    this.end = newEnd;
+  }
+
+  getDate(DateTime time) {
+    final localTime = time.toLocal();
+    final date = Date.fromTime(localTime);
+
+    return date.localTime();
+  }
+
+  setStartAllDay(DateTime start) {
+    isAllDay = true;
+
+    this.start = getDate(start);
+
+    if (end != null && end!.difference(this.start) < Duration.zero) {
+      end = this.start;
+    }
+  }
+
+  setEndAllDay(DateTime end) {
+    isAllDay = true;
+
+    final newEnd = getDate(end);
+
+    this.end = newEnd;
+
+    if (newEnd.difference(start) < Duration.zero) {
+      start = newEnd;
+    }
   }
 
   DateTime localStart() {
