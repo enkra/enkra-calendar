@@ -17,8 +17,8 @@ tink-daead = "0.2.4"
 anyhow = "1.0.56"
 base64 = "0.13.0"
 pickledb = { version = "0.5.1", default-features = false, features = ["cbor"] }
-rusqlite = { version = "0.27.0", features = ["bundled-sqlcipher-vendored-openssl"] }
-nosqlite = { git = "https://github.com/abraca-app/nosqlite", rev = "28c6ce36c3cb87e33492c5cb3e156c817d24e704" }
+rusqlite = { version = "0.28.0", features = ["bundled-sqlcipher-vendored-openssl"] }
+nosqlite = { git = "https://github.com/abraca-app/nosqlite", rev = "f5964277f255b6341ad030ac3aca4987c7a50d81" }
 serde_json = "1.0.79"
 chrono = { version = "0.4.19", features = ["serde"] }
 hex = "0.4.3"
@@ -26,7 +26,7 @@ once_cell = "1.10.0"
 futures = { version = "0.3.21", default-features = false }
 log = "0.4.16"
 log_err = "1.1.1"
-juniper = { version = "0.15.9", default-features = false, features = ["chrono"] }
+juniper = { version = "0.15.10", default-features = false, features = ["chrono"] }
 serde = "1.0.136"
 indexmap = { version = "1.8.1", features = ["std"] }
 
