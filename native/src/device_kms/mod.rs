@@ -1,17 +1,16 @@
 use anyhow::Result;
-use tink_core::Aead;
 
 #[cfg(target_os = "android")]
 pub mod android;
-#[cfg(not(target_os = "android"))]
-pub mod desktop;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+pub mod fallback;
 
 mod empty_aead;
 
+pub use empty_aead::EmptyAead;
+
 pub trait DeviceKms {
-    fn new_key(&self, key_alias: &str) -> Result<()>;
+    fn new_key_uri(&self) -> Result<String>;
 
-    fn has_key(&self, key_alias: &str) -> Result<bool>;
-
-    fn aead(&self, key_alias: &str) -> Result<Box<dyn Aead>>;
+    fn register_kms_client(&self);
 }

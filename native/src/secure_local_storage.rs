@@ -1,3 +1,4 @@
+use std::fs::File;
 use std::path::Path;
 
 use anyhow::{anyhow, bail, Result};
@@ -9,7 +10,7 @@ use tink_core::{
     Aead, DeterministicAead,
 };
 
-use crate::device_kms::DeviceKms;
+use crate::device_kms::{DeviceKms, EmptyAead};
 
 pub struct SecureLocalStorage {
     key_deterministic_aead: Box<dyn DeterministicAead>,
@@ -123,7 +124,7 @@ impl SecureLocalStorage {
     pub fn new_with_kms<P: AsRef<Path> + Clone>(
         file_path: P,
         device_kms: &Box<dyn DeviceKms>,
-        master_key_alias: &str,
+        master_key_file: P,
     ) -> Result<SecureLocalStorage> {
         let mut db = Self::load_or_create_db(file_path);
 
@@ -131,7 +132,7 @@ impl SecureLocalStorage {
 
         info!("secure local storage version: {}", version);
 
-        let master_key = Self::read_or_generate_master_key(device_kms, master_key_alias)?;
+        let master_key = Self::read_or_generate_master_key(device_kms, master_key_file)?;
 
         let daead_keyset = Self::read_or_generate_key(
             &mut db,
@@ -160,29 +161,48 @@ impl SecureLocalStorage {
         })
     }
 
-    fn read_or_generate_master_key(
+    fn read_or_generate_master_key<P: AsRef<Path> + Clone>(
         device_kms: &Box<dyn DeviceKms>,
-        master_key_alias: &str,
+        master_key_file: P,
     ) -> Result<Box<dyn Aead>> {
-        if !device_kms
-            .has_key(master_key_alias)
-            .log_expect("DeviceKms has key failed")
-        {
-            device_kms
-                .new_key(master_key_alias)
-                .log_expect("DeviceKms new key failed")
-        }
+        // Add a lock to avoid master key file corruption
+        let lock = std::sync::Mutex::new(());
 
-        let remote_aead = device_kms
-            .aead(master_key_alias)
-            .log_expect("DeviceKms aead failed");
+        let _lock = lock.lock().map_err(|e| anyhow!("{}", e))?;
 
-        let aead = Box::new(tink_aead::KmsEnvelopeAead::new(
-            tink_aead::x_cha_cha20_poly1305_key_template(),
-            remote_aead,
-        ));
+        let master_keyset = if !master_key_file.as_ref().exists() {
+            let device_kms_uri = device_kms.new_key_uri()?;
 
-        Ok(aead)
+            let keyset = keyset::Handle::new(&tink_aead::kms_envelope_aead_key_template(
+                &device_kms_uri,
+                tink_aead::x_cha_cha20_poly1305_key_template(),
+            ))
+            .map_err(|e| anyhow!("{}", e))?;
+
+            // Save master keyset to file
+            //
+            // We choose EmptyAead to pesudo encrypt the master key
+            // because there's no secret information in it
+            keyset
+                .write(
+                    &mut BinaryWriter::new(File::create(master_key_file)?),
+                    Box::new(EmptyAead::new()),
+                )
+                .map_err(|e| anyhow!("{}", e))?;
+
+            keyset
+        } else {
+            // load master keyset from file
+            let keyset = keyset::Handle::read(
+                &mut BinaryReader::new(File::open(master_key_file)?),
+                Box::new(EmptyAead::new()),
+            )
+            .map_err(|e| anyhow!("{}", e))?;
+
+            keyset
+        };
+
+        Ok(tink_aead::new(&master_keyset).map_err(|e| anyhow!("{}", e))?)
     }
 
     fn read_or_generate_key(
@@ -269,7 +289,6 @@ impl SecureStorable for Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use std::{cell::RefCell, collections::HashMap};
 
     use tempfile::tempdir;
 
@@ -277,43 +296,55 @@ mod tests {
 
     use super::*;
 
-    struct TestKms {
-        master_aeads: RefCell<HashMap<String, Box<dyn Aead>>>,
-    }
+    pub struct TestKms;
 
     impl DeviceKms for TestKms {
-        fn new_key(&self, key_alias: &str) -> Result<()> {
-            let master_keyset =
-                keyset::Handle::new(&tink_aead::x_cha_cha20_poly1305_key_template())
-                    .map_err(|e| anyhow!("{}", e))?;
-
-            let master_aead = tink_aead::new(&master_keyset).map_err(|e| anyhow!("{}", e))?;
-
-            self.master_aeads
-                .borrow_mut()
-                .insert(key_alias.to_owned(), master_aead);
-
-            Ok(())
+        fn new_key_uri(&self) -> Result<String> {
+            Ok("enkra-test-kms://".into())
         }
 
-        fn has_key(&self, key_alias: &str) -> Result<bool> {
-            Ok(self.master_aeads.borrow().contains_key(key_alias))
-        }
-
-        fn aead(&self, key_alias: &str) -> Result<Box<dyn Aead>> {
-            let aeads = self.master_aeads.borrow();
-
-            let aead = aeads.get(key_alias).unwrap();
-
-            Ok(aead.box_clone())
+        fn register_kms_client(&self) {
+            tink_core::registry::register_kms_client(TestKmsClient::new());
         }
     }
 
     impl TestKms {
+        pub fn new() -> Self {
+            Self
+        }
+    }
+
+    pub struct TestKmsClient {
+        master_keyset: keyset::Handle,
+    }
+
+    impl TestKmsClient {
+        pub const URI_PREFIX: &'static str = "enkra-test-kms://";
+
         fn new() -> Self {
-            TestKms {
-                master_aeads: RefCell::new(HashMap::new()),
+            let master_keyset =
+                keyset::Handle::new(&tink_aead::x_cha_cha20_poly1305_key_template()).unwrap();
+
+            Self { master_keyset }
+        }
+    }
+
+    impl tink_core::registry::KmsClient for TestKmsClient {
+        fn supported(&self, key_uri: &str) -> bool {
+            key_uri.starts_with(Self::URI_PREFIX)
+        }
+
+        fn get_aead(
+            &self,
+            key_uri: &str,
+        ) -> Result<Box<dyn tink_core::Aead>, tink_core::TinkError> {
+            if !self.supported(key_uri) {
+                return Err("unsupported key_uri".into());
             }
+
+            let master_aead = tink_aead::new(&self.master_keyset)?;
+
+            Ok(master_aead)
         }
     }
 
@@ -325,11 +356,13 @@ mod tests {
         let tmp_dir = tempdir().unwrap();
 
         let db_path = tmp_dir.path().join("kv.db");
+        let master_key_path = tmp_dir.path().join("master_key");
 
         let device_kms: Box<dyn DeviceKms> = Box::new(TestKms::new());
+        device_kms.register_kms_client();
 
         let mut secure_local_storage =
-            SecureLocalStorage::new_with_kms(db_path, &device_kms, "master_key").unwrap();
+            SecureLocalStorage::new_with_kms(db_path, &device_kms, master_key_path).unwrap();
 
         secure_local_storage.set("key1", &"123".to_owned()).unwrap();
         secure_local_storage.set("key2", &"456".to_owned()).unwrap();
@@ -358,11 +391,13 @@ mod tests {
         let tmp_dir = tempdir().unwrap();
 
         let db_path = tmp_dir.path().join("kv.db");
+        let master_key_path = tmp_dir.path().join("master_key");
 
         let device_kms: Box<dyn DeviceKms> = Box::new(TestKms::new());
+        device_kms.register_kms_client();
 
         let mut secure_local_storage =
-            SecureLocalStorage::new_with_kms(db_path, &device_kms, "master_key").unwrap();
+            SecureLocalStorage::new_with_kms(db_path, &device_kms, master_key_path).unwrap();
 
         secure_local_storage.set("key1", &"123".to_owned()).unwrap();
 
@@ -383,15 +418,20 @@ mod tests {
         let tmp_dir = tempdir().unwrap();
 
         let db_path = tmp_dir.path().join("kv.db");
+        let master_key_path = tmp_dir.path().join("master_key");
 
         let device_kms: Box<dyn DeviceKms> = Box::new(TestKms::new());
+        device_kms.register_kms_client();
 
         let bytes = tink_core::subtle::random::get_random_bytes(32);
 
         {
-            let mut secure_local_storage =
-                SecureLocalStorage::new_with_kms(db_path.clone(), &device_kms, "master_key")
-                    .unwrap();
+            let mut secure_local_storage = SecureLocalStorage::new_with_kms(
+                db_path.clone(),
+                &device_kms,
+                master_key_path.clone(),
+            )
+            .unwrap();
 
             secure_local_storage.set("key1", &bytes).unwrap();
             let value1: Vec<u8> = secure_local_storage.get("key1").unwrap().unwrap();
@@ -402,9 +442,12 @@ mod tests {
 
         //reload db
         {
-            let secure_local_storage =
-                SecureLocalStorage::new_with_kms(db_path.clone(), &device_kms, "master_key")
-                    .unwrap();
+            let secure_local_storage = SecureLocalStorage::new_with_kms(
+                db_path.clone(),
+                &device_kms,
+                master_key_path.clone(),
+            )
+            .unwrap();
 
             let value1: Vec<u8> = secure_local_storage.get("key1").unwrap().unwrap();
             assert_eq!(value1, bytes);

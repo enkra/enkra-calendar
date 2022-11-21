@@ -31,8 +31,8 @@ use secure_local_storage::SecureLocalStorage;
 
 #[cfg(target_os = "android")]
 use device_kms::android::AndroidKms;
-#[cfg(not(target_os = "android"))]
-use device_kms::desktop::EmptyKms;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
+use device_kms::fallback::EmptyKms;
 use device_kms::DeviceKms;
 
 static RUNTIME: Lazy<io::Result<Runtime>> = Lazy::new(|| {
@@ -58,12 +58,12 @@ struct CalendarNative {
 }
 
 impl CalendarNative {
+    const MASTER_KEY_FILE: &'static str = "master_key";
+
     const SECURE_LOCAL_STOAGE_FILE: &'static str = "vault.db";
 
     const CALENDAR_DB_KEY: &'static str = "calendar_db_key";
     const CALENDAR_DB_FILE: &'static str = "calendar.db";
-
-    const MASTER_KEYSET_ALIAS: &'static str = "__calendar_vault_master_key__";
 
     pub fn new<P: AsRef<Path> + Clone>(data_dir: P) -> Self {
         let mut data_dir = data_dir.as_ref().to_path_buf();
@@ -77,13 +77,16 @@ impl CalendarNative {
             ));
         }
 
+        let device_kms = Self::build_device_kms();
+        device_kms.register_kms_client();
+
         // value.db is to store calendar app secrets such as sqlite db key.
         // Don't store app config preferences in it. Use a separate SecureLocalStorage
         // to store them.
         let mut vault = SecureLocalStorage::new_with_kms(
             data_dir.join(Self::SECURE_LOCAL_STOAGE_FILE),
-            &Self::build_deivce_kms(),
-            Self::MASTER_KEYSET_ALIAS,
+            &device_kms,
+            data_dir.join(Self::MASTER_KEY_FILE)
         )
         .log_unwrap();
 
@@ -96,10 +99,10 @@ impl CalendarNative {
         }
     }
 
-    fn build_deivce_kms() -> Box<dyn DeviceKms> {
+    fn build_device_kms() -> Box<dyn DeviceKms> {
         #[cfg(target_os = "android")]
         let device_kms: Box<dyn DeviceKms> = Box::new(AndroidKms::new());
-        #[cfg(not(target_os = "android"))]
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
         let device_kms: Box<dyn DeviceKms> = Box::new(EmptyKms::new());
 
         device_kms
