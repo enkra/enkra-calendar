@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:functional_widget_annotation/functional_widget_annotation.dart';
@@ -60,9 +59,7 @@ Widget calendar(
 
   final today = calendarManager.today();
 
-  final selectedDay = useState<Date?>(today);
-
-  final scrolledToDay = useState(today);
+  final selectedDay = useState<Date>(today);
 
   return Column(
     children: [
@@ -71,12 +68,11 @@ Widget calendar(
           vertical: 16.0,
         ),
         child: _CalendarPanel(
-            focusedDay: scrolledToDay.value,
+            focusedDay: selectedDay.value,
             onDaySelected: (day) {
               final date = Date.fromTime(day);
 
               selectedDay.value = date;
-              scrolledToDay.value = date;
 
               onDateChanged(date);
             }),
@@ -92,12 +88,6 @@ Widget calendar(
       Expanded(
           child: _DatePanelList(
         initialDay: selectedDay.value,
-        onDateScroll: (date) {
-          scrolledToDay.value = date;
-          selectedDay.value = null;
-
-          onDateChanged(date);
-        },
       ))
     ],
   );
@@ -208,263 +198,84 @@ Widget _calendarPanel(
 }
 
 class _DatePanelList extends HookWidget {
-  _DatePanelList({
+  const _DatePanelList({
     Key? key,
     this.initialDay,
-    this.onDateScroll,
   }) : super(key: key);
 
   final Date? initialDay;
 
-  void Function(Date)? onDateScroll;
-
-  int? _initialIndex;
-  List<Date> _dates = [];
-
-  _buildDates(CalendarManager calendarManager) {
-    var dates = calendarManager.eventDays();
-
-    dates.insert(0, calendarManager.today());
-
-    if (initialDay != null) {
-      dates.insert(0, initialDay!);
-    }
-
-    dates = dates.toSet().toList();
-
-    dates.sort();
-
-    final eventWeeks = dates.map((day) => Week.fromDate(day)).toList();
-
-    final earliestWeek = eventWeeks.first.substract(15);
-    final latestWeek = eventWeeks.last.add(15);
-
-    var allWeeks = Week.range(earliestWeek, latestWeek);
-
-    for (var w in eventWeeks) {
-      allWeeks.remove(w);
-    }
-
-    final allWeekFirstDays = allWeeks.map((week) => week.firstDay());
-
-    List<Date> allDays = [...dates, ...allWeekFirstDays];
-
-    allDays.sort();
-
-    _dates = allDays;
-
-    if (initialDay != null) {
-      _initialIndex = _dates.indexOf(initialDay!);
-    }
-  }
-
-  _listenPositionChanges(
-      ValueListenable<Iterable<ItemPosition>> itemPosistions) {
-    itemPosistions.addListener(() {
-      final index = itemPosistions.value.firstOrNull?.index;
-
-      if (index == null) {
-        return;
-      }
-
-      final date = _dates[index];
-
-      if (initialDay == null) {
-        return onDateScroll?.call(date);
-      }
-
-      if (!date.isSame(initialDay!)) {
-        return onDateScroll?.call(date);
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    final itemScrollController = useState(ItemScrollController());
-
     return Consumer<CalendarManager>(
-      builder: (context, calendarManager, child) {
-        _buildDates(calendarManager);
+        builder: (context, calendarManager, child) {
+      final date = initialDay ?? calendarManager.today();
 
-        final itemPositionsListener = ItemPositionsListener.create();
-        final position = itemPositionsListener.itemPositions;
-
-        _listenPositionChanges(position);
-
-        final dateCount = _dates.length;
-
-        if (itemScrollController.value.isAttached && _initialIndex != null) {
-          itemScrollController.value.jumpTo(index: _initialIndex!);
-        }
-
-        return ScrollablePositionedList.separated(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16.0,
-          ),
-          itemCount: dateCount,
-          separatorBuilder: (context, _) => const Divider(
-            height: 1,
-          ),
-          itemBuilder: (context, index) {
-            final date = _dates[index];
-            final events = calendarManager.getByDate(date);
-
-            final isToday = calendarManager.isToday(date);
-
-            if (events.events.isNotEmpty || isToday || date == initialDay) {
-              return _EventDatePanel(date, events);
-            } else {
-              return _FreeWeekPanel(
-                week: Week.fromDate(date),
-              );
-            }
-          },
-          initialScrollIndex: _initialIndex ?? 0,
-          itemScrollController: itemScrollController.value,
-          itemPositionsListener: itemPositionsListener,
-        );
-      },
-    );
-  }
-}
-
-@swidget
-Widget _eventDatePanel(BuildContext context, Date date, DateEvent event) {
-  final calendarManager = Provider.of<CalendarManager>(context, listen: false);
-
-  final isToday = calendarManager.isToday(date);
-
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      final width = constraints.maxWidth;
-
-      final columnWidth = (width - 3 * 16) / 4;
+      final events = calendarManager.getByDate(date);
 
       return Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: columnWidth,
-              child: _DateIndicator(
-                date: date,
-                highlight: isToday,
-              ),
-            ),
-            const SizedBox(width: 16),
             Expanded(
-              child: _EventList(event),
+              child: _EventList(
+                date: date,
+                event: events,
+              ),
             )
           ],
         ),
       );
-    },
-  );
+    });
+  }
 }
 
 @swidget
-Widget _freeWeekPanel(
-  BuildContext context, {
-  required Week week,
-}) {
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      final width = constraints.maxWidth;
-
-      final singleColumnWidth = (width - 3 * 16) / 4;
-
-      final columnWidth = singleColumnWidth;
-
-      return Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Center(
-              child: SizedBox(
-                width: columnWidth,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _DateMonthIndicator(date: week.firstDay()),
-                    Container(
-                      color: Colors.black,
-                      width: 10,
-                      height: 1,
-                    ),
-                    _DateMonthIndicator(date: week.lastDay()),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            const Expanded(
-                child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 24),
-              child: Text(
-                "Nothing planned",
-                style: TextStyle(
-                  color: Colors.black,
-                ),
-              ),
-            )),
-          ],
-        ),
-      );
-    },
-  );
-}
-
-@swidget
-Widget _dateIndicator(
+Widget _eventList(
   BuildContext context, {
   required Date date,
-  bool highlight = false,
+  required DateEvent event,
 }) {
   final theme = Theme.of(context);
 
-  final color = highlight ? theme.colorScheme.primary : Colors.black;
-
-  return SizedBox(
-      child: Column(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      Text(
-        date.format(DateFormat(DateFormat.ABBR_WEEKDAY)),
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: color,
-          fontSize: 15,
-        ),
-      ),
-      Text(
-        date.day.toString(),
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: color,
-          fontSize: 24,
-        ),
-      ),
-    ],
-  ));
-}
-
-@swidget
-Widget _eventList(BuildContext context, DateEvent event) {
   final holiday = event.holidays.firstOrNull;
+
+  final dateString = date.format(DateFormat("EEEE, MMMM d, y"));
 
   if (event.events.isEmpty) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: const [
-        EventContainer(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
-            "Noting planned",
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+            dateString,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(
+                  Icons.today,
+                  color: Colors.grey,
+                  size: 60.0,
+                ),
+                Text(
+                  "Noting planned",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -473,16 +284,43 @@ Widget _eventList(BuildContext context, DateEvent event) {
   } else {
     final eventBoxes = event.events.map((e) => _EventBox(e));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _DateInfo(
-          holiday: holiday,
-          birthdays: event.birthdays,
-          anniversaries: event.anniversaries,
-        ),
-        ...eventBoxes
-      ],
+    final eventCount = event.events.length;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              dateString,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Chip(
+              avatar: CircleAvatar(
+                backgroundColor: theme.colorScheme.primary,
+                child: Text('$eventCount'),
+              ),
+              label: const Text('Tasks'),
+              backgroundColor: Colors.grey[200],
+            ),
+          ),
+          const SizedBox(height: 16),
+          _DateInfo(
+            holiday: holiday,
+            birthdays: event.birthdays,
+            anniversaries: event.anniversaries,
+          ),
+          ...eventBoxes
+        ],
+      ),
     );
   }
 }
@@ -562,56 +400,78 @@ Widget _dateInfo(
 Widget _eventBox(BuildContext context, IEvent event) {
   final time = TimeOfDay.fromDateTime(event.start).format(context);
 
-  return EventContainer(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(event.summary ?? "Event",
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            )),
-        const SizedBox(height: 8),
-        Text(time,
-            style: const TextStyle(
-              color: Color(0xff808691),
-              fontWeight: FontWeight.w400,
-            )),
-      ],
-    ),
-    onTap: () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (context) => EditingPage(
-                  initialDay: Date.fromTime(DateTime.now()),
-                  eventToEdit: event,
-                )),
-      );
-    },
-    onLongPress: () {
-      showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            final calendarManager =
-                Provider.of<CalendarManager>(context, listen: false);
-
-            final leadDialog = SimpleDialog(
-              children: <Widget>[
-                SimpleDialogOption(
-                  onPressed: () {
-                    if (event.uid != null) {
-                      calendarManager.removeEvent(event.uid!);
-                    }
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Delete'),
-                ),
+  return Material(
+    type: MaterialType.card,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 6),
+              decoration: const BoxDecoration(
+                color: Colors.orange,
+                shape: BoxShape.circle,
+              ),
+              width: 12,
+              height: 12,
+            ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(event.summary ?? "Event",
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    )),
+                const SizedBox(height: 8),
+                Text(time,
+                    style: const TextStyle(
+                      color: Color(0xff808691),
+                      fontWeight: FontWeight.w400,
+                    )),
               ],
-            );
-            return leadDialog;
-          });
-    },
+            ),
+          ],
+        ),
+      ),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => EditingPage(
+                    initialDay: Date.fromTime(DateTime.now()),
+                    eventToEdit: event,
+                  )),
+        );
+      },
+      onLongPress: () {
+        showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              final calendarManager =
+                  Provider.of<CalendarManager>(context, listen: false);
+
+              final leadDialog = SimpleDialog(
+                children: <Widget>[
+                  SimpleDialogOption(
+                    onPressed: () {
+                      if (event.uid != null) {
+                        calendarManager.removeEvent(event.uid!);
+                      }
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Delete'),
+                  ),
+                ],
+              );
+              return leadDialog;
+            });
+      },
+    ),
   );
 }
 
