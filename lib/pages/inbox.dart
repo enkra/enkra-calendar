@@ -218,46 +218,38 @@ Widget __itemQuickMenu(
 Widget __placeholder(
   BuildContext context,
 ) {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const SizedBox(height: 16),
-      Expanded(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SvgPicture.asset(
-                "assets/checklist.svg",
-                width: 150,
-                height: 150,
-              ),
-              const SizedBox(height: 15),
-              const Text(
-                "Empty inbox",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                "Note what you want to do here quickly",
-                style: TextStyle(
-                  color: Colors.grey,
-                ),
-              ),
-              const Text(
-                "and schedule them later.",
-                style: TextStyle(
-                  color: Colors.grey,
-                ),
-              ),
-            ],
+  return Center(
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SvgPicture.asset(
+          "assets/checklist.svg",
+          width: 150,
+          height: 150,
+        ),
+        const SizedBox(height: 15),
+        const Text(
+          "Empty inbox",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.grey,
           ),
         ),
-      ),
-    ],
+        const SizedBox(height: 10),
+        const Text(
+          "Note what you want to do here quickly",
+          style: TextStyle(
+            color: Colors.grey,
+          ),
+        ),
+        const Text(
+          "and schedule them later.",
+          style: TextStyle(
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -265,20 +257,21 @@ Widget __placeholder(
 Widget __textTask(BuildContext context, {required InboxNote note}) {
   final theme = Theme.of(context);
 
-  final onLongPress = () {
+  onLongPress() {
     showMaterialModalBottomSheet(
       expand: false,
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => _ItemQuickMenu(note: note),
     );
-  };
+  }
 
   return Padding(
     padding: const EdgeInsets.only(bottom: 4),
     child: EventContainer(
       backgroundColor: theme.colorScheme.secondary,
       leadingColor: Colors.transparent,
+      onLongPress: onLongPress,
       child: Text(
         note.content,
         textAlign: TextAlign.justify,
@@ -290,7 +283,6 @@ Widget __textTask(BuildContext context, {required InboxNote note}) {
           fontWeight: FontWeight.w400,
         ),
       ),
-      onLongPress: onLongPress,
     ),
   );
 }
@@ -311,45 +303,48 @@ Widget __time(BuildContext context, {required Date date}) {
   );
 }
 
-class Inbox extends StatelessWidget {
+class Inbox extends StatefulWidget {
   const Inbox({Key? key}) : super(key: key);
 
   @override
+  State<Inbox> createState() => _InboxState();
+}
+
+class _InboxState extends State<Inbox> {
+  ScrollController scrollController = ScrollController();
+
+  @override
   Widget build(BuildContext context) {
-    final scrollController = ScrollController();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (scrollController.hasClients) {
-        scrollController.jumpTo(scrollController.position.maxScrollExtent);
-      }
-    });
-
-    return Column(children: [
-      Expanded(
-        child: Consumer<CalendarManager>(
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Flexible(
+          child: Consumer<CalendarManager>(
             builder: (context, calendarManager, child) {
-          final notes = calendarManager.inboxNotes();
-          return FutureBuilder(
-              future: notes,
-              builder: (context, AsyncSnapshot<List<InboxNote>> f) {
-                final notes = f.data ?? [];
+              final notes = calendarManager.inboxNotes();
+              return FutureBuilder(
+                  future: notes,
+                  builder: (context, AsyncSnapshot<List<InboxNote>> f) {
+                    final notes = f.data ?? [];
 
-                return renderContent(notes, scrollController);
-              });
-        }),
-      ),
-      _Input(
-        onNoteCreated: (_) {
-          onNoteCreated(scrollController);
-        },
-      ),
-    ]);
+                    return renderContent(notes, scrollController);
+                  });
+            },
+          ),
+        ),
+        _Input(
+          onNoteCreated: (_) {
+            onNoteCreated(scrollController);
+          },
+        )
+      ],
+    );
   }
 
   onNoteCreated(scrollController) {
     if (scrollController.hasClients) {
       scrollController.animateTo(
-        scrollController.position.maxScrollExtent,
+        scrollController.position.minScrollExtent,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
@@ -359,22 +354,29 @@ class Inbox extends StatelessWidget {
   renderContent(notes, scrollController) {
     if (notes.isEmpty) {
       return const _Placeholder();
-    } else {
-      final noteItems = renderNotes(notes);
-
-      return ListView.builder(
-        padding: const EdgeInsets.only(
-          left: 32,
-          right: 32,
-          top: 16,
-        ),
-        itemCount: noteItems.length,
-        itemBuilder: (context, index) {
-          return noteItems[index];
-        },
-        controller: scrollController,
-      );
     }
+
+    // use double reversed list view to make
+    // resizing UX more friendly
+    // when keyboard popuping
+    final noteItems = renderNotes(notes).reversed.toList();
+
+    return ListView.builder(
+      key: const PageStorageKey("Notes"),
+      shrinkWrap: true,
+      physics: const AlwaysScrollableScrollPhysics(),
+      reverse: true,
+      padding: const EdgeInsets.only(
+        left: 32,
+        right: 32,
+        top: 16,
+      ),
+      itemCount: noteItems.length,
+      itemBuilder: (context, index) {
+        return noteItems[index];
+      },
+      controller: scrollController,
+    );
   }
 
   renderNotes(notes) {
