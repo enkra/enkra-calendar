@@ -2,8 +2,6 @@
 CARGO_MAKE_EXTEND_WORKSPACE_MAKEFILE = true
 ANDROID_PLATFORM_VERSION = "28"
 TARGET_OS = "unknown"
-CFLAGS = "-flto"
-RUSTFLAGS = "-Clinker-plugin-lto"
 
 DEV = true
 RELEASE = false
