@@ -1,6 +1,6 @@
 use allo_isolate::Isolate;
 use futures::future;
-use log::error;
+use log::{error, info};
 use log_err::{LogErrOption, LogErrResult};
 use once_cell::sync::{Lazy, OnceCell};
 use std::{
@@ -70,6 +70,7 @@ impl CalendarNative {
     const CALENDAR_DB_FILE: &'static str = "calendar.db";
 
     pub fn new<P: AsRef<Path> + Clone>(data_dir: P) -> Self {
+        info!("CalendarNative new");
         let mut data_dir = data_dir.as_ref().to_path_buf();
 
         data_dir.push("data");
@@ -90,7 +91,7 @@ impl CalendarNative {
         let mut vault = SecureLocalStorage::new_with_kms(
             data_dir.join(Self::SECURE_LOCAL_STOAGE_FILE),
             &device_kms,
-            data_dir.join(Self::MASTER_KEY_FILE)
+            data_dir.join(Self::MASTER_KEY_FILE),
         )
         .log_unwrap();
 
@@ -173,11 +174,7 @@ pub extern "C" fn calendar_init(port: i64, data_dir: *const c_char) -> i32 {
 
     let rt = runtime!();
     let task = Isolate::new(port).task(future::lazy(move |_| {
-        let _ = CALENDAR_NATIVE
-            .set(CalendarNative::new(data_dir))
-            .map_err(|_| {
-                error!("init calendar native failed");
-            });
+        let _ = CALENDAR_NATIVE.get_or_init(|| CalendarNative::new(data_dir));
 
         true
     }));
