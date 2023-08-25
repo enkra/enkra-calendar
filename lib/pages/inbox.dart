@@ -5,6 +5,7 @@ import 'package:functional_widget_annotation/functional_widget_annotation.dart';
 import 'package:intl/intl.dart';
 import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 
 import '../calendar.dart';
 import '../date.dart';
@@ -32,14 +33,14 @@ Widget buildInboxPage(
   );
 }
 
-@swidget
+@hwidget
 Widget __input(
   BuildContext context, {
   ValueChanged<String>? onNoteCreated,
 }) {
   final theme = Theme.of(context);
 
-  final controller = TextEditingController();
+  final controller = useRef(TextEditingController());
 
   return Material(
     type: MaterialType.card,
@@ -67,7 +68,7 @@ Widget __input(
                 textInputAction: TextInputAction.newline,
                 maxLines: 5,
                 minLines: 1,
-                controller: controller,
+                controller: controller.value,
                 decoration: const InputDecoration(
                   hintText: "Type your todos",
                   border: InputBorder.none,
@@ -88,7 +89,7 @@ Widget __input(
             ),
             color: theme.colorScheme.primary,
             onPressed: () {
-              final content = controller.text;
+              final content = controller.value.text;
 
               if (content == "") {
                 return;
@@ -98,7 +99,7 @@ Widget __input(
                   Provider.of<CalendarManager>(context, listen: false);
               calendarManager.addNote(InboxNote(content: content));
 
-              controller.clear();
+              controller.value.clear();
 
               onNoteCreated?.call(content);
             },
@@ -313,23 +314,46 @@ class Inbox extends StatefulWidget {
 class _InboxState extends State<Inbox> {
   ScrollController scrollController = ScrollController();
 
+  bool suppressPointerUp = false;
+
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Flexible(
-          child: Consumer<CalendarManager>(
-            builder: (context, calendarManager, child) {
-              final notes = calendarManager.inboxNotes();
-              return FutureBuilder(
-                  future: notes,
-                  builder: (context, AsyncSnapshot<List<InboxNote>> f) {
-                    final notes = f.data ?? [];
-
-                    return renderContent(notes, scrollController);
-                  });
+        Expanded(
+          child: Listener(
+            behavior: HitTestBehavior.opaque,
+            onPointerMove: (e) {
+              final delta = e.delta;
+              if (delta.dx.abs() > 1.5 || delta.dy.abs() > 1.5) {
+                suppressPointerUp = true;
+              }
             },
+            onPointerUp: (_) {
+              if (!suppressPointerUp) {
+                FocusManager.instance.primaryFocus?.unfocus();
+              }
+              suppressPointerUp = false;
+            },
+            child: Column(
+              children: [
+                Flexible(
+                  child: Consumer<CalendarManager>(
+                    builder: (context, calendarManager, child) {
+                      final notes = calendarManager.inboxNotes();
+                      return FutureBuilder(
+                          future: notes,
+                          builder: (context, AsyncSnapshot<List<InboxNote>> f) {
+                            final notes = f.data ?? [];
+
+                            return renderContent(notes, scrollController);
+                          });
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         _Input(
@@ -364,7 +388,6 @@ class _InboxState extends State<Inbox> {
     return ListView.builder(
       key: const PageStorageKey("Notes"),
       shrinkWrap: true,
-      physics: const AlwaysScrollableScrollPhysics(),
       reverse: true,
       padding: const EdgeInsets.only(
         left: 32,
