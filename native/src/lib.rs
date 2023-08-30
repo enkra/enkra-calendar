@@ -1,3 +1,6 @@
+#[cfg(target_os = "ios")]
+use std::os::unix::ffi::OsStringExt;
+
 use allo_isolate::Isolate;
 use futures::future;
 use log::{error, info};
@@ -80,6 +83,19 @@ impl CalendarNative {
                 "Create data_dir {} failed",
                 data_dir.to_string_lossy()
             ));
+        }
+
+        // Exclude data dir from icloud auto backup on ios platform
+        // We disable auto backuping in AndroidManifest.xml on android platform
+        #[cfg(target_os = "ios")]
+        {
+            let path = data_dir.clone().into_os_string();
+
+            let path = CString::new(path.into_vec()).log_expect("data dir invalid");
+
+            let result = unsafe { iosExcludeFromBackup(path.as_ptr()) };
+
+            info!("exclude ios data dir: {}", result);
         }
 
         let device_kms = Self::build_device_kms();
@@ -216,4 +232,8 @@ pub extern "C" fn calendar_db_graphql(
     });
 
     0
+}
+
+extern "C" {
+    fn iosExcludeFromBackup(filePath: *const c_char) -> bool;
 }

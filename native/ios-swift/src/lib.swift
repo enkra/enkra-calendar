@@ -90,3 +90,32 @@ func randomPublicKey() -> UnsafeMutableRawPointer {
     let k = Unmanaged.passRetained(key.x963Representation as AnyObject)
     return k.toOpaque()
 }
+
+@_cdecl("iosExcludeFromBackup")
+func excludeFromBackup(cFilePath: UnsafePointer<CChar>) -> Bool {
+    guard let filePath = String(validatingUTF8: cFilePath) else {
+        debugPrint("cFilePath invalid")
+        return false
+    }
+
+    guard let safePath = filePath.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+        debugPrint("convert file path to safe version failed")
+        return false
+    }
+
+    guard var url = URL(string: "file://" + safePath) else {
+        debugPrint("URL error")
+        return false
+    }
+
+    var resourceValues = URLResourceValues()
+    resourceValues.isExcludedFromBackup = true
+
+    do {
+        try url.setResourceValues(resourceValues)
+    } catch {
+        debugPrint("exclude from backup failed")
+        return false
+    }
+    return true
+}
