@@ -8,11 +8,7 @@ import Flutter
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
+    print("dummy_value=\(dummy_method_to_enforce_bundling())");
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }
-  public static func dummyMethodToEnforceBundling() {
-    store_dart_post_cobject(nil)
-    calendar_init(0, nil)
-    calendar_db_graphql(0, nil, nil)
   }
 }
