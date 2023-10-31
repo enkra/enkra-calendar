@@ -83,11 +83,17 @@ rustup target add aarch64-apple-ios x86_64-apple-ios
 5. generate dart files
 
 ```sh
-dart run flutter_oss_licenses:generate.dart
+dart run flutter_oss_licenses:generate
 dart run build_runner build
 ```
 
-6. flutter run or build
+6. build ios
+
+```sh
+cargo make -p release ios
+```
+
+7. flutter run or build
 
 ```
 flutter run
